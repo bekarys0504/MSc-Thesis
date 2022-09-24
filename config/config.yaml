@@ -16,3 +16,23 @@ colors:
 preprocess:
   low_cut: 0.5
   high_cut: 32
+
+# Noisy records which should be removed and not used
+# S51_post_EC_DepActive_2min removed because it is much shorter than all others (only 100 s after cutting)
+noisy_recs: [
+    "S1_Pre-EC1_EEG", "S8_Post_EC1_EEG", "S9_post_EC_Healthy_2min",
+    "S9-Pre_EC1", "S9-Pre_EO1", "S15_Pre_EC1_EEG",
+    "S15_Pre_EO1_EEG", "S24_pre_EO1", "S26_pre_EC1_EEG",
+    "S26_pre_EO1_EEG", "S29_EC1_Post_EEG", "S29_EO1Post_EEG", 
+    "S33_Post_EC1_EEG", "S33_Post_EO1_EEG", "S35_pre_Ec1_EEG",
+    "S35_pre_Eo1_EEG", "S35-PostEC1_EEG", "S35-PostEO1_EEG",
+    "S37_EC1_Pre_EEG", "S37_EO1_Pre_EEG", "S39-Post_EC1_EEG",
+    "S39-Post_EO1_EEG", "S39_Pre_EC1_EEG", "S40_post_EC_DepSham_2min",
+    "S40_post_EO_DepSham_2min", "S40_pre_EC_DepSham_2min", "S41_EC1_post_EEG",
+    "S41_EO1_post_EEG", "S41_EC1_pre_EEG", "S42_EC1PostBilal_EEG",
+    "S42_pre_EO1", "S42_Prre_EC1", "S44_EC1_post_EEG",
+    "S44_EC1_pre_EEG", "S45_EC1_Pre_EEG", "S45_EO1_pre_EEG",
+    "S45_Post_EC1_EEG", "S45_Post_EO1_EEG", "S46_EO1_post_EEG",
+    "S46_Pre_EC1", "S46_Pre_EO1", "S47_pre_EC1_EEG",
+    "S47_pre_EO1_EEG", "S51_post_EC_DepActive_2min", "S52_pre_EC_DepActive_2min"
+]
