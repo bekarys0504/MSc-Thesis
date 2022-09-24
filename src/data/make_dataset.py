@@ -1,29 +1,29 @@
 # -*- coding: utf-8 -*-
+import glob
 import logging
-import os
 from pathlib import Path
-import pandas as pd
-import openpyxl
-import kaleido
+import h5io
 
+import chart_studio.plotly as py
 import click
+import kaleido
 import matplotlib
 import matplotlib.pyplot as plt
 import mne
+import numpy as np
+import openpyxl
+import pandas as pd
+from autoreject import get_rejection_threshold
 from dotenv import find_dotenv, load_dotenv
 from omegaconf import OmegaConf
-import glob
-from pathlib import Path
-from autoreject import get_rejection_threshold
-
-from plotly import tools
-import chart_studio.plotly as py
-from plotly.graph_objs import Layout, Scatter, Figure, Marker, Annotations
-from plotly.graph_objs.layout import YAxis, Font, Annotation
-
+from plotly.graph_objs import Annotations, Figure, Layout, Marker, Scatter
+from plotly.graph_objs.layout import Annotation, Font, YAxis
+import PyQt5
+mne.set_log_level(False)
 # I had error as in this link https://github.com/open-mmlab/mmdetection/issues/7035
-matplotlib.use('Agg')
 
+#matplotlib.use('Agg')
+matplotlib.use('Qt5Agg')
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('output_filepath', type=click.Path())
@@ -42,8 +42,9 @@ def main(input_filepath, output_filepath):
     save_eeg = False
     save_psd = False
     layout = read_montage()
-    all_files = glob.glob('./data/raw/Dataset_1/All Participants//**/*.edf', recursive=True)
     config = OmegaConf.load('./config/config.yaml')
+    all_files = glob.glob('./data/raw/Dataset_1/All Participants//**/*.edf', recursive=True)
+    all_files = remove_noisy_data(all_files, config)
 
     df = pd.DataFrame(columns=['fname', 'channels', 'length'])
 
@@ -52,16 +53,20 @@ def main(input_filepath, output_filepath):
         filename = Path(files).stem # filename without extension
         # read files
         raw = mne.io.read_raw_edf(files, preload=True);
+        raw = rename_channels(raw)
         raw.set_montage(layout, on_missing = 'ignore');
-        
         raw_filtered = bandpass_filter(raw, config)
-
+        
+        plot_eeg_data(raw_filtered, filename, 500, False, './reports/figures/eeg/raw/', True)
+        raw_filtered = perform_ica(raw_filtered)
+        plot_eeg_data(raw_filtered, filename, 500, False, './reports/figures/eeg/raw/', True)
+        
         df = df.append(pd.Series({'fname':filename, 'channels':raw_filtered.get_data().shape[0], 'length':raw_filtered.get_data().shape[1]}), ignore_index=True)
         
         # plot eeg data and it's power spectral density and save them in figures
         if plot_eeg:
-            plot_eeg_data(raw, config, filename, 500, save=save_eeg, save_folder='./reports/figures/eeg/raw/')
-            plot_eeg_data(raw_filtered, config, filename, 500, save=save_eeg, save_folder='./reports/figures/eeg/filtered/')
+            plot_eeg_data(raw, filename, 500, save=save_eeg, save_folder='./reports/figures/eeg/raw/')
+            plot_eeg_data(raw_filtered, filename, 500, save=save_eeg, save_folder='./reports/figures/eeg/filtered/')
         if plot_psd:
             plot_psd_data(raw, config, filename, save=save_psd, save_folder='./reports/figures/psd/raw/')
             plot_psd_data(raw_filtered, config, filename, save=save_psd, save_folder='./reports/figures/psd/filtered/')
@@ -76,7 +81,7 @@ def plot_psd_data(data, config, filename, save, save_folder):
     if save:
         fig.savefig(save_folder + filename +'.png') # save figures     
 
-def plot_eeg_data(data, config, filename, fs, save, save_folder, show=False):
+def plot_eeg_data(data, filename, fs, save, save_folder, show=False, plot_title=None):
     picks = mne.pick_types(data.info, eeg=True, exclude=[])
     #start, stop = data.time_as_index([0, data.n_times/fs])
     start, stop = data.time_as_index([0, 20])
@@ -108,6 +113,15 @@ def plot_eeg_data(data, config, filename, fs, save, save_folder, show=False):
     for ii, ch_name in enumerate(ch_names):
             fig.add_annotation(x=-0.04, y=0, xref='paper', yref='y%d' % (ii + 1), text=ch_name, font=dict(size=9), showarrow=False)
     
+    #if plot_title is not None:  
+    #    fig.update_layout(
+    #        title=plot_title,
+    #        font=dict(
+    #            family="Courier New, monospace",
+    #            size=18,
+    #            color="RebeccaPurple"
+    #        )
+    #    )
     if show:
         fig.show()
     if save:
@@ -146,6 +160,51 @@ def perform_ica(data, step=1):
                             preload=True);
 
     reject = get_rejection_threshold(epochs_ica);
+    
+    # ICA parameters
+    random_state = 42   # ensures ICA is reproducable each time it's run
+    ica_n_components = .999     # Specify n_components as a decimal to set % explained variance
+
+    # Fit ICA
+    ica = mne.preprocessing.ICA(n_components=ica_n_components,
+                                random_state=random_state,
+                                )
+    ica.fit(epochs_ica,
+            reject=reject,
+            tstep=tstep)
+
+    ica.plot_sources(inst=data, show=True)
+    ica.plot_properties(epochs_ica, picks=range(0, ica.n_components_), psd_args={'fmax': 40});
+
+    exclude_channels = input("Input:")
+    if len(exclude_channels) > 0:
+        exclude_channels = [np.int64(v) for v in exclude_channels.split(",")]
+    
+    ica.exclude = exclude_channels
+    ica.apply(data)
+
+    return data
+
+def rename_channels(data):
+    """
+    rename channels to remove 'EEG', '-A1' and '-A2'
+    """
+    ch_names_dict = {}
+    for i in range(31):
+        ch_name = data.info['chs'][i]['ch_name']
+        ch_name_new = ch_name
+        ch_name_new = ch_name_new.replace('EEG ', '')
+        ch_name_new = ch_name_new.replace('-A1', '')
+        ch_name_new = ch_name_new.replace('-A2', '')
+        ch_names_dict[ch_name] = ch_name_new
+    
+    mne.rename_channels(data.info, ch_names_dict)
+    return data
+
+def remove_noisy_data(filelist, config):
+    noisy_recs = config['noisy_recs']
+    filelist = [x for x in filelist if Path(x).stem not in noisy_recs]
+    return filelist
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
