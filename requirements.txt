@@ -13,3 +13,4 @@ plotly==5.10.0
 PyQt5==5.15.7
 python-dotenv==0.21.0
 setuptools==58.1.0
+EDFlib-Python==1.0.6

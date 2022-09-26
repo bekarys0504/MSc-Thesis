@@ -2,10 +2,10 @@
 import glob
 import logging
 from pathlib import Path
-import h5io
 
 import chart_studio.plotly as py
 import click
+import h5io
 import kaleido
 import matplotlib
 import matplotlib.pyplot as plt
@@ -13,12 +13,14 @@ import mne
 import numpy as np
 import openpyxl
 import pandas as pd
+import PyQt5
 from autoreject import get_rejection_threshold
 from dotenv import find_dotenv, load_dotenv
 from omegaconf import OmegaConf
 from plotly.graph_objs import Annotations, Figure, Layout, Marker, Scatter
 from plotly.graph_objs.layout import Annotation, Font, YAxis
-import PyQt5
+import os
+
 mne.set_log_level(False)
 # I had error as in this link https://github.com/open-mmlab/mmdetection/issues/7035
 
@@ -27,6 +29,8 @@ matplotlib.use('Qt5Agg')
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('output_filepath', type=click.Path())
+
+
 
 def main(input_filepath, output_filepath):
     """ Runs data processing scripts to turn raw data from (../raw) into
@@ -41,27 +45,40 @@ def main(input_filepath, output_filepath):
     plot_psd = False
     save_eeg = False
     save_psd = False
+    extension = '.npy'
     layout = read_montage()
-    config = OmegaConf.load('./config/config.yaml')
-    all_files = glob.glob('./data/raw/Dataset_1/All Participants//**/*.edf', recursive=True)
+    all_files = glob.glob(input_filepath+'/Dataset_1/All Participants//**/*.edf', recursive=True)
     all_files = remove_noisy_data(all_files, config)
-
-    df = pd.DataFrame(columns=['fname', 'channels', 'length'])
+    #all_files = all_files[:2]
+    df = pd.DataFrame(columns=['fname', 'channels', 'length', 'ic_removed'])
 
     # iterate through all .edf files in 'input_filepath'
     for files in all_files:
+        new_filename = get_new_filename(files)
+        print(new_filename)
         filename = Path(files).stem # filename without extension
         # read files
         raw = mne.io.read_raw_edf(files, preload=True);
         raw = rename_channels(raw)
         raw.set_montage(layout, on_missing = 'ignore');
-        raw_filtered = bandpass_filter(raw, config)
+        raw_filtered = bandpass_filter(raw)
         
-        plot_eeg_data(raw_filtered, filename, 500, False, './reports/figures/eeg/raw/', True)
-        raw_filtered = perform_ica(raw_filtered)
-        plot_eeg_data(raw_filtered, filename, 500, False, './reports/figures/eeg/raw/', True)
+        #plot_eeg_data(raw_filtered, filename, 500, False, './reports/figures/eeg/raw/', True)
+        #raw_filtered.plot()
+        #raw_ica, excluded_channels = perform_ica(raw_filtered)
+        #raw_ica.plot()
         
-        df = df.append(pd.Series({'fname':filename, 'channels':raw_filtered.get_data().shape[0], 'length':raw_filtered.get_data().shape[1]}), ignore_index=True)
+        raw_ica = raw_filtered.copy()
+
+        #plot_eeg_data(raw_ica, filename, 500, False, './reports/figures/eeg/raw/', True)
+        #mne.export.export_raw(output_filepath+new_filename+'.edf', raw_ica, overwrite=True)
+        if os.path.exists(output_filepath+'/'+new_filename+extension):
+            print('file exists')
+            new_filename = new_filename+'_1'+extension
+        
+        np.save(output_filepath+'/'+new_filename+extension, raw_ica.get_data)
+
+        #df = df.append(pd.Series({'fname':filename, 'channels':raw_filtered.get_data().shape[0], 'length':raw_filtered.get_data().shape[1], 'ic_removed':excluded_channels}), ignore_index=True)
         
         # plot eeg data and it's power spectral density and save them in figures
         if plot_eeg:
@@ -73,6 +90,45 @@ def main(input_filepath, output_filepath):
 
     if save_excel_file:
         df.to_excel('./reports/data.xlsx')
+
+def get_new_filename(path):
+    subject = get_subject_number(path)
+    eye_state = get_eye_state(path)
+    state = check_state(path)
+    subject_class = get_class(subject)
+
+    new_filename = subject+'_'+subject_class+'_'+state+'_'+eye_state
+    return new_filename
+
+def get_subject_number(path):
+    return path.split('\\')[1][:-1]
+
+def get_class(subject):
+    healthy = config['healthy_subjects']
+    depressed = config['depressed_subjects']
+
+    if subject in healthy:
+        return "healthy"
+    elif subject in depressed:
+        return "depressed"  
+    else:
+        return 'NOT_FOUND'
+
+def get_eye_state(string):
+    if 'ec' in string.lower():
+        return "ec"
+    elif 'eo' in string.lower():
+        return "eo"
+    else:
+        return 'NOT_FOUND'   
+
+def check_state(string):
+    if 'pre' in string.lower():
+        return 'pre'
+    elif 'post' in string.lower():
+        return 'post'
+    else:
+        return 'NOT_FOUND'
 
 def plot_psd_data(data, config, filename, save, save_folder):
     fig, axes = plt.subplots(figsize = (8,3));
@@ -113,21 +169,21 @@ def plot_eeg_data(data, filename, fs, save, save_folder, show=False, plot_title=
     for ii, ch_name in enumerate(ch_names):
             fig.add_annotation(x=-0.04, y=0, xref='paper', yref='y%d' % (ii + 1), text=ch_name, font=dict(size=9), showarrow=False)
     
-    #if plot_title is not None:  
-    #    fig.update_layout(
-    #        title=plot_title,
-    #        font=dict(
-    #            family="Courier New, monospace",
-    #            size=18,
-    #            color="RebeccaPurple"
-    #        )
-    #    )
+    if plot_title is not None:  
+        fig.update_layout(
+            title=plot_title,
+            font=dict(
+                family="Courier New, monospace",
+                size=18,
+                color="RebeccaPurple"
+            )
+        )
     if show:
         fig.show()
     if save:
         fig.write_image(save_folder + filename +'.png') 
 
-def bandpass_filter(data, config):
+def bandpass_filter(data):
     low_cut = config.preprocess['low_cut']
     high_cut  = config.preprocess['high_cut']
 
@@ -163,7 +219,7 @@ def perform_ica(data, step=1):
     
     # ICA parameters
     random_state = 42   # ensures ICA is reproducable each time it's run
-    ica_n_components = .999     # Specify n_components as a decimal to set % explained variance
+    ica_n_components = 31     # Specify n_components as a decimal to set % explained variance
 
     # Fit ICA
     ica = mne.preprocessing.ICA(n_components=ica_n_components,
@@ -183,7 +239,7 @@ def perform_ica(data, step=1):
     ica.exclude = exclude_channels
     ica.apply(data)
 
-    return data
+    return data, exclude_channels
 
 def rename_channels(data):
     """
@@ -216,5 +272,5 @@ if __name__ == '__main__':
     # find .env automagically by walking up directories until it's found, then
     # load up the .env entries as environment variables
     load_dotenv(find_dotenv())
-
+    config = OmegaConf.load('./config/config.yaml')
     main()
