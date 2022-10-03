@@ -40,46 +40,59 @@ def main(input_filepath, output_filepath):
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
 
-    save_excel_file = False
+    save_excel_file = True
     plot_eeg = False
     plot_psd = False
     save_eeg = False
     save_psd = False
-    extension = '.npy'
+    extension = '.csv'
+    dataset = 'Dataset1'
     layout = read_montage()
-    all_files = glob.glob(input_filepath+'/Dataset_1/All Participants//**/*.edf', recursive=True)
-    all_files = remove_noisy_data(all_files, config)
-    #all_files = all_files[:2]
-    df = pd.DataFrame(columns=['fname', 'channels', 'length', 'ic_removed'])
 
+    if dataset == 'Dataset1':
+        all_files = glob.glob(input_filepath+'/Dataset_1/All Participants//**/*.edf', recursive=True)
+    if dataset == 'Dataset2':
+        all_files = glob.glob(input_filepath+'/Dataset_1/**//**/*.set', recursive=True)
+        
+    all_files = remove_noisy_data(all_files, config)
+
+    df = pd.DataFrame(columns=['fname', 'channels', 'length', 'ic_removed'])
+    
     # iterate through all .edf files in 'input_filepath'
     for files in all_files:
-        new_filename = get_new_filename(files)
-        print(new_filename)
+        new_filename, subject, state, eye_state, subject_class = get_new_filename(files)
         filename = Path(files).stem # filename without extension
+
         # read files
-        raw = mne.io.read_raw_edf(files, preload=True);
+        if dataset == 'Dataset1':
+            raw = mne.io.read_raw_edf(files, preload=True);
+        if dataset == 'Dataset2':
+            raw = mne.io.read_raw_eeglab(files, preload=True);
+        
         raw = rename_channels(raw)
         raw.set_montage(layout, on_missing = 'ignore');
-        raw_filtered = bandpass_filter(raw)
+        raw_filtered = filter(raw)
         
-        #plot_eeg_data(raw_filtered, filename, 500, False, './reports/figures/eeg/raw/', True)
-        #raw_filtered.plot()
-        #raw_ica, excluded_channels = perform_ica(raw_filtered)
-        #raw_ica.plot()
-        
-        raw_ica = raw_filtered.copy()
+        # perform ica
+        raw_filtered.plot()
+        raw_ica, excluded_channels = perform_ica(raw_filtered.copy())
+        raw_filtered.plot()
+        raw_ica.plot()
 
-        #plot_eeg_data(raw_ica, filename, 500, False, './reports/figures/eeg/raw/', True)
-        #mne.export.export_raw(output_filepath+new_filename+'.edf', raw_ica, overwrite=True)
+        # save files
         if os.path.exists(output_filepath+'/'+new_filename+extension):
             print('file exists')
             new_filename = new_filename+'_1'+extension
         
-        np.save(output_filepath+'/'+new_filename+extension, raw_ica.get_data)
+        data_df = raw_ica.to_data_frame(picks=config['ch_names'])
+        data_df['subject'] = subject
+        data_df['post_pre'] = state
+        data_df['eye_state'] = eye_state
+        data_df['class'] = subject_class
+        data_df.to_csv(output_filepath+'/'+new_filename+extension)
 
-        #df = df.append(pd.Series({'fname':filename, 'channels':raw_filtered.get_data().shape[0], 'length':raw_filtered.get_data().shape[1], 'ic_removed':excluded_channels}), ignore_index=True)
-        
+        df = df.append(pd.Series({'fname':filename, 'channels':raw_filtered.get_data().shape[0], 'length':raw_filtered.get_data().shape[1], 'ic_removed':excluded_channels}), ignore_index=True)
+
         # plot eeg data and it's power spectral density and save them in figures
         if plot_eeg:
             plot_eeg_data(raw, filename, 500, save=save_eeg, save_folder='./reports/figures/eeg/raw/')
@@ -91,6 +104,7 @@ def main(input_filepath, output_filepath):
     if save_excel_file:
         df.to_excel('./reports/data.xlsx')
 
+
 def get_new_filename(path):
     subject = get_subject_number(path)
     eye_state = get_eye_state(path)
@@ -98,7 +112,7 @@ def get_new_filename(path):
     subject_class = get_class(subject)
 
     new_filename = subject+'_'+subject_class+'_'+state+'_'+eye_state
-    return new_filename
+    return new_filename, subject, state, eye_state, subject_class
 
 def get_subject_number(path):
     return path.split('\\')[1][:-1]
@@ -132,7 +146,7 @@ def check_state(string):
 
 def plot_psd_data(data, config, filename, save, save_folder):
     fig, axes = plt.subplots(figsize = (8,3));
-    data.plot_psd(ax=axes, fmax=100, color = config.colors['dtu_red'], show=False, spatial_colors=False);
+    data.plot_psd(ax=axes, fmax=100, color = config.colors['dtu_red'], show=False, spatial_colors=False, exclude=['event']);
     
     if save:
         fig.savefig(save_folder + filename +'.png') # save figures     
@@ -183,12 +197,16 @@ def plot_eeg_data(data, filename, fs, save, save_folder, show=False, plot_title=
     if save:
         fig.write_image(save_folder + filename +'.png') 
 
-def bandpass_filter(data):
+def filter(data):
+    # crop the signal
+    max_seconds = (data.get_data().shape[1]-1)/500 # calculate total time
+    data.crop(tmin=1, tmax=max_seconds-2) # crop end
+
     low_cut = config.preprocess['low_cut']
     high_cut  = config.preprocess['high_cut']
 
     data_filt = data.copy().filter(low_cut, high_cut);
-
+    data_filt = data_filt.copy().notch_filter(50);
     return data_filt
 
 def read_montage(show=False):
@@ -237,7 +255,7 @@ def perform_ica(data, step=1):
         exclude_channels = [np.int64(v) for v in exclude_channels.split(",")]
     
     ica.exclude = exclude_channels
-    ica.apply(data)
+    data = ica.apply(data)
 
     return data, exclude_channels
 
@@ -246,15 +264,20 @@ def rename_channels(data):
     rename channels to remove 'EEG', '-A1' and '-A2'
     """
     ch_names_dict = {}
-    for i in range(31):
+    for i in range(data.get_data().shape[0]):
         ch_name = data.info['chs'][i]['ch_name']
         ch_name_new = ch_name
         ch_name_new = ch_name_new.replace('EEG ', '')
         ch_name_new = ch_name_new.replace('-A1', '')
         ch_name_new = ch_name_new.replace('-A2', '')
         ch_names_dict[ch_name] = ch_name_new
-    
+
     mne.rename_channels(data.info, ch_names_dict)
+    
+    not_matching_channels = list(set(data.info['ch_names'][:-1]) - set(config['ch_names']))
+    if len(not_matching_channels):
+        data.info['bads'].extend(not_matching_channels)
+
     return data
 
 def remove_noisy_data(filelist, config):

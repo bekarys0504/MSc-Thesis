@@ -47,7 +47,7 @@ ch_names1: ['Fp1',
  'O2']
 preprocess:
   low_cut: 0.5
-  high_cut: 32
+  high_cut: 70
 
 healthy_subjects: ['S2','S3', 'S9','S10','S12','S13','S14','S15','S19','S20','S24','S25','S30','S32','S38','S39','S42','S46','S29','S6','S23','S47','S49']
 depressed_subjects: ['S1','S4','S5','S7','S8','S11','S16','S17','S18','S21','S22','S26','S27','S31','S33','S35','S36','S37','S40','S41','S43','S44','S45']
@@ -63,12 +63,12 @@ noisy_recs: [
     "S33_Post_EC1_EEG", "S33_Post_EO1_EEG", "S35_pre_Ec1_EEG",
     "S35_pre_Eo1_EEG", "S35-PostEC1_EEG", "S35-PostEO1_EEG",
     "S37_EC1_Pre_EEG", "S37_EO1_Pre_EEG", "S39-Post_EC1_EEG",
-    "S39-Post_EO1_EEG", "S39_Pre_EC1_EEG", "S40_EC_Post_EEG",
+    "S39-Post_EO1_EEG", "S39_Pre_EC1_EEG", "S39_Pre_EO1_EEG", "S40_EC_Post_EEG",
     "S40_EO1_post_EEG", "S40_EC_Pre_EEG", "S40_EO_pre_EEG", "S41_EC1_post_EEG",
     "S41_EO1_post_EEG", "S41_EC1_pre_EEG", "S42_EC1PostBilal_EEG", "S42_EO1PostBilal",
     "S42_pre_EO1", "S42_Prre_EC1", "S44_EC1_post_EEG", "S44_EO1_post_EEG", "S44_EO1_pre_EEG",
     "S44_EC1_pre_EEG", "S45_EC1_Pre_EEG", "S45_EO1_pre_EEG",
     "S45_Post_EC1_EEG", "S45_Post_EO1_EEG", "S46_EO1_post_EEG",
     "S46_Pre_EC1", "S46_Pre_EO1", "S47_pre_EC1_EEG",
-    "S47_pre_EO1_EEG", "S51_post_EC_DepActive_2min", "S52_pre_EC_DepActive_2min"
+    "S47_pre_EO1_EEG", "S52_Pre_EC"
 ]
