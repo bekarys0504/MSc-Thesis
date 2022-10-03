@@ -72,3 +72,5 @@ noisy_recs: [
     "S46_Pre_EC1", "S46_Pre_EO1", "S47_pre_EC1_EEG",
     "S47_pre_EO1_EEG", "S52_Pre_EC"
 ]
+
+channels: [['Fp1', 'Fpz', 'Fp2']]
