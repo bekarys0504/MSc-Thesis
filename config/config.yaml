@@ -69,8 +69,9 @@ noisy_recs: [
     "S42_pre_EO1", "S42_Prre_EC1", "S44_EC1_post_EEG", "S44_EO1_post_EEG", "S44_EO1_pre_EEG",
     "S44_EC1_pre_EEG", "S45_EC1_Pre_EEG", "S45_EO1_pre_EEG",
     "S45_Post_EC1_EEG", "S45_Post_EO1_EEG", "S46_EO1_post_EEG",
-    "S46_Pre_EC1", "S46_Pre_EO1", "S47_pre_EC1_EEG",
+    "S46_Pre_EC1", "S46_Pre_EO1", "S46_EC1_post_EEG", "S47_pre_EC1_EEG",
     "S47_pre_EO1_EEG", "S52_Pre_EC"
 ]
 
-channels: [['Fp1', 'Fpz', 'Fp2']]
+channels: [['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
+'P3', 'P4', 'FT7', 'FT8', 'O1', 'O2', 'C3', 'C4']]
