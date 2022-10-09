@@ -40,7 +40,7 @@ def main(input_filepath, output_filepath):
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
 
-    save_excel_file = True
+    save_excel_file = False
     plot_eeg = False
     plot_psd = False
     save_eeg = False
