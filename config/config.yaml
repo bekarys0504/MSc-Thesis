@@ -75,3 +75,5 @@ noisy_recs: [
 
 channels: [['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
 'P3', 'P4', 'FT7', 'FT8', 'O1', 'O2', 'C3', 'C4']]
+
+epochs: [4]
