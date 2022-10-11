@@ -20,6 +20,7 @@ from omegaconf import OmegaConf
 from plotly.graph_objs import Annotations, Figure, Layout, Marker, Scatter
 from plotly.graph_objs.layout import Annotation, Font, YAxis
 import os
+from scipy import stats, signal
 
 mne.set_log_level(False)
 # I had error as in this link https://github.com/open-mmlab/mmdetection/issues/7035
@@ -41,10 +42,10 @@ def main(input_filepath, output_filepath):
     logger.info('making final data set from raw data')
 
     save_excel_file = False
-    plot_eeg = False
-    plot_psd = False
-    save_eeg = False
-    save_psd = False
+    plot_eeg = True
+    plot_psd = True
+    save_eeg = True
+    save_psd = True
     extension = '.csv'
     dataset = 'Dataset1'
     layout = read_montage()
@@ -61,6 +62,7 @@ def main(input_filepath, output_filepath):
     # iterate through all .edf files in 'input_filepath'
     for files in all_files:
         new_filename, subject, state, eye_state, subject_class = get_new_filename(files)
+
         filename = Path(files).stem # filename without extension
 
         # read files
@@ -71,14 +73,15 @@ def main(input_filepath, output_filepath):
         
         raw = rename_channels(raw)
         raw.set_montage(layout, on_missing = 'ignore');
-        raw_filtered = filter(raw)
+        raw_filtered = filter_cheb2(raw)
         
+        '''
         # perform ica
         raw_filtered.plot()
         raw_ica, excluded_channels = perform_ica(raw_filtered.copy())
         raw_filtered.plot()
         raw_ica.plot()
-
+        
         # save files
         if os.path.exists(output_filepath+'/'+new_filename+extension):
             print('file exists')
@@ -92,6 +95,7 @@ def main(input_filepath, output_filepath):
         data_df.to_csv(output_filepath+'/'+new_filename+extension)
 
         df = df.append(pd.Series({'fname':filename, 'channels':raw_filtered.get_data().shape[0], 'length':raw_filtered.get_data().shape[1], 'ic_removed':excluded_channels}), ignore_index=True)
+        '''
 
         # plot eeg data and it's power spectral density and save them in figures
         if plot_eeg:
@@ -146,7 +150,7 @@ def check_state(string):
 
 def plot_psd_data(data, config, filename, save, save_folder):
     fig, axes = plt.subplots(figsize = (8,3));
-    data.plot_psd(ax=axes, fmax=100, color = config.colors['dtu_red'], show=False, spatial_colors=False, exclude=['event']);
+    data.plot_psd(ax=axes, fmax=100, color = config.colors['dtu_red'], show=False, spatial_colors=False, exclude=['event', 'bads']);
     
     if save:
         fig.savefig(save_folder + filename +'.png') # save figures     
@@ -207,6 +211,26 @@ def filter(data):
 
     data_filt = data.copy().filter(low_cut, high_cut);
     data_filt = data_filt.copy().notch_filter(50);
+    return data_filt
+
+def filter_cheb2(data):
+    # crop the signal
+    max_seconds = (data.get_data().shape[1]-1)/500 # calculate total time
+    data.crop(tmin=1, tmax=max_seconds-2) # crop end
+
+    fs = config['freq_smapling']
+    BP_EDGE = config.preprocess['BP_EDGE']
+    lower_stop , upper_stop , lower_pass , upper_pass = BP_EDGE
+    ws = [lower_stop/(fs*0.5), upper_stop/(fs*0.5)] # stopband edge frequencies
+    wp = [lower_pass/(fs*0.5), upper_pass/(fs*0.5)] # passband edge frequencies
+    rp = 3 # maximum loss in pb
+    rs = 60 # minimum attenuation in sb
+    N, Wn = signal.cheb2ord(wp,ws,rp,rs)
+    iir_params = dict(ftype='cheby2', order=N, rp=rp, rs=rs, output='sos')
+    iir_params = mne.filter.construct_iir_filter(iir_params, [lower_pass, upper_stop], sfreq=fs, btype='bandpass')  
+
+    raw_cheb = data.copy().filter(lower_pass, upper_stop, iir_params=iir_params, method='iir');
+    data_filt = raw_cheb.copy().notch_filter(50);
     return data_filt
 
 def read_montage(show=False):

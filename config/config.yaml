@@ -48,6 +48,9 @@ ch_names1: ['Fp1',
 preprocess:
   low_cut: 0.5
   high_cut: 70
+  BP_EDGE: [0.4, 70, 0.5, 69] # set lower stopband and passband edge frequencies for cheb2
+
+freq_smapling: 500
 
 healthy_subjects: ['S2','S3', 'S9','S10','S12','S13','S14','S15','S19','S20','S24','S25','S30','S32','S38','S39','S42','S46','S29','S6','S23','S47','S49']
 depressed_subjects: ['S1','S4','S5','S7','S8','S11','S16','S17','S18','S21','S22','S26','S27','S31','S33','S35','S36','S37','S40','S41','S43','S44','S45']
@@ -73,7 +76,7 @@ noisy_recs: [
     "S47_pre_EO1_EEG", "S52_Pre_EC"
 ]
 
-channels: [['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
+channels: [['Fp1', 'Fp2', 'Fpz'], [FT7, FT8, T6, T5, TP7, TP8], ['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
 'P3', 'P4', 'FT7', 'FT8', 'O1', 'O2', 'C3', 'C4']]
 
-epochs: [4]
+epochs: [2, 4, 10]
