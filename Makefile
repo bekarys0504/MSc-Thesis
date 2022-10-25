@@ -26,8 +26,11 @@ requirements: test_environment
 	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
 
 ## Make Dataset
-data: requirements
+data: 
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/interim
+
+data2: 
+	$(PYTHON_INTERPRETER) src/data/make_dataset_2.py data/raw data/interim
 
 ## Make Dataset
 features: requirements

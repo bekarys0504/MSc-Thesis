@@ -23,12 +23,12 @@ def main(input_filepath, output_filepath):
     logger.info('Building features')
 
     
-    all_files = glob.glob('./data/interim/*.csv', recursive=True)
+    all_files = glob.glob('./data/interim/dataset_1_cheb2/*.csv', recursive=True)
     all_files = [x for x in all_files if 'post' not in x] # get only pre data
 
     SEGMENT_LENS = config['epochs']
     CHANNELS = config['channels']
-    fs = config['freq_smapling']
+    fs = config['freq_sampling']
 
     for channels in CHANNELS:
         for segment_len in SEGMENT_LENS:
@@ -50,7 +50,7 @@ def main(input_filepath, output_filepath):
             
             print('Saving pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
             
-            features_df.to_csv(output_filepath+'/pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
+            features_df.to_csv(output_filepath+'/Dataset_1/cheb_2/pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
 
 # function to split data into segments
 def split_into_segments(df,split_seg_len ,fs):

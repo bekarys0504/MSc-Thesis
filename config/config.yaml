@@ -14,43 +14,14 @@ colors:
   purple: "#79238E"
 
 ch_names: ['Fp1', 'Fpz', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8', 'FT7', 'FC3', 'FCz', 'FC4', 'FT8', 'T3', 'C3', 'Cz', 'C4', 'T4', 'TP7', 'CP3', 'CPz', 'CP4', 'TP8', 'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'Oz', 'O2']
-ch_names1: ['Fp1',
- 'Fpz',
- 'Fp2',
- 'F7',
- 'F3',
- 'Fz',
- 'F4',
- 'F8',
- 'FT7',
- 'FC3',
- 'FCz',
- 'FC4',
- 'FT8',
- 'T3',
- 'C3',
- 'Cz',
- 'C4',
- 'T4',
- 'TP7',
- 'CP3',
- 'CPz',
- 'CP4',
- 'TP8',
- 'T5',
- 'P3',
- 'Pz',
- 'P4',
- 'T6',
- 'O1',
- 'Oz',
- 'O2']
+ch_names_2: ['EEG Fp1-LE', 'EEG F3-LE', 'EEG C3-LE', 'EEG P3-LE', 'EEG O1-LE', 'EEG F7-LE', 'EEG T3-LE', 'EEG T5-LE', 'EEG Fz-LE', 'EEG Fp2-LE', 'EEG F4-LE', 'EEG C4-LE', 'EEG P4-LE', 'EEG O2-LE', 'EEG F8-LE', 'EEG T4-LE', 'EEG T6-LE', 'EEG Cz-LE', 'EEG Pz-LE', 'EEG A2-A1', 'EEG 23A-23R', 'EEG 24A-24R']
+
 preprocess:
   low_cut: 0.5
   high_cut: 70
   BP_EDGE: [0.4, 70, 0.5, 69] # set lower stopband and passband edge frequencies for cheb2
 
-freq_smapling: 500
+freq_sampling: 500
 
 healthy_subjects: ['S2','S3', 'S9','S10','S12','S13','S14','S15','S19','S20','S24','S25','S30','S32','S38','S39','S42','S46','S29','S6','S23','S47','S49']
 depressed_subjects: ['S1','S4','S5','S7','S8','S11','S16','S17','S18','S21','S22','S26','S27','S31','S33','S35','S36','S37','S40','S41','S43','S44','S45']

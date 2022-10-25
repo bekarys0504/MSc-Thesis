@@ -41,20 +41,23 @@ def main(input_filepath, output_filepath):
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
 
-    save_excel_file = False
-    plot_eeg = True
-    plot_psd = True
-    save_eeg = True
-    save_psd = True
+    save_excel_file = True
+    plot_eeg = False
+    plot_psd = False
+    save_eeg = False
+    save_psd = False
     extension = '.csv'
     dataset = 'Dataset1'
     layout = read_montage()
 
     if dataset == 'Dataset1':
         all_files = glob.glob(input_filepath+'/Dataset_1/All Participants//**/*.edf', recursive=True)
-    if dataset == 'Dataset2':
+        all_files = [x for x in all_files if 'post' not in x.lower()]
+    if dataset == 'Dataset1_1':
         all_files = glob.glob(input_filepath+'/Dataset_1/**//**/*.set', recursive=True)
-        
+        all_files = [x for x in all_files if 'post' not in x]
+    
+    folder_name = '/dataset_1_cheb2/'
     all_files = remove_noisy_data(all_files, config)
 
     df = pd.DataFrame(columns=['fname', 'channels', 'length', 'ic_removed'])
@@ -68,14 +71,13 @@ def main(input_filepath, output_filepath):
         # read files
         if dataset == 'Dataset1':
             raw = mne.io.read_raw_edf(files, preload=True);
-        if dataset == 'Dataset2':
+        if dataset == 'Dataset1_1':
             raw = mne.io.read_raw_eeglab(files, preload=True);
         
         raw = rename_channels(raw)
         raw.set_montage(layout, on_missing = 'ignore');
         raw_filtered = filter_cheb2(raw)
         
-        '''
         # perform ica
         raw_filtered.plot()
         raw_ica, excluded_channels = perform_ica(raw_filtered.copy())
@@ -83,7 +85,7 @@ def main(input_filepath, output_filepath):
         raw_ica.plot()
         
         # save files
-        if os.path.exists(output_filepath+'/'+new_filename+extension):
+        if os.path.exists(output_filepath+folder_name+new_filename+extension):
             print('file exists')
             new_filename = new_filename+'_1'+extension
         
@@ -92,10 +94,10 @@ def main(input_filepath, output_filepath):
         data_df['post_pre'] = state
         data_df['eye_state'] = eye_state
         data_df['class'] = subject_class
-        data_df.to_csv(output_filepath+'/'+new_filename+extension)
+        data_df.to_csv(output_filepath+folder_name+new_filename+extension)
 
         df = df.append(pd.Series({'fname':filename, 'channels':raw_filtered.get_data().shape[0], 'length':raw_filtered.get_data().shape[1], 'ic_removed':excluded_channels}), ignore_index=True)
-        '''
+        
 
         # plot eeg data and it's power spectral density and save them in figures
         if plot_eeg:
@@ -272,7 +274,7 @@ def perform_ica(data, step=1):
             tstep=tstep)
 
     ica.plot_sources(inst=data, show=True)
-    ica.plot_properties(epochs_ica, picks=range(0, ica.n_components_), psd_args={'fmax': 40});
+    ica.plot_properties(epochs_ica, picks=range(0, ica.n_components_), psd_args={'fmax': 80});
 
     exclude_channels = input("Input:")
     if len(exclude_channels) > 0:
