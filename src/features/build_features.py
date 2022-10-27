@@ -9,6 +9,8 @@ import numpy as np
 from scipy import stats
 import nolds
 import antropy as ant
+import pyeeg as pe
+from scipy.fft import fft , rfft , fftfreq , rfftfreq
 
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
@@ -45,7 +47,7 @@ def main(input_filepath, output_filepath):
                 segments = split_into_segments(data, segment_len, fs)
 
                 for i, segment in enumerate(segments.values()):
-                    features = extract_features(segment, channels)
+                    features = extract_features(segment, channels, fs)
                     features_df.loc[len(features_df)] = features+subject_class
             
             print('Saving pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
@@ -64,41 +66,81 @@ def split_into_segments(df,split_seg_len ,fs):
     
     return d
 
-def extract_features(data_df, channels):
+def extract_features(data_df, channels, fs):
     features = []
 
-    # normalize each channel
-    # data_df=(data_df-data_df.min())/(data_df.max()-data_df.min())
+    # Define EEG bands
+    eeg_bands = config['eeg_bands']
 
+    #linear features
     features = features + [np.mean(np.abs(data_df[ch])) for ch in channels] # absolute mean of each channel
     features = features + [np.var(data_df[ch]) for ch in channels] # variance of each channel
-    features = features + [max(data_df[ch])  for ch in channels] # peaks
+    #features = features + [max(data_df[ch])  for ch in channels] # peaks
     features = features + [stats.skew(data_df[ch])  for ch in channels] # skewness
     features = features + [stats.kurtosis(data_df[ch])  for ch in channels] # kurtosis
     features = features + [np.sum(np.abs(data_df[ch])**2) for ch in channels] # energy
-    features = features + [np.std(data_df[ch])  for ch in channels] # standard deviation
+
+    hjorth_mob = []
+    hjorth_comp = []
+    delta_power = []
+    theta_power = []
+    alpha_power = []
+    beta_power = []
+    gamma_power = []
+    for ch in channels:
+        fft_vals = np.abs(rfft(data_df[ch]))
+        fft_freq = rfftfreq(len(channel_data), 1.0/FS)
+        for band in eeg_bands:
+            freq_ix = np.where((fft_freq >= eeg_bands[band][0]) & (fft_freq <= eeg_bands[band][1]))[0]
+            mean_power = np.mean(fft_vals[freq_ix ]**2)/fft_vals.size
+        delta_val, theta_val, alpha_val, beta_val, gamma_val = pe.spectrum.bin_power(data_df[ch], [0.5,4,8,12,35,70], fs)[1]
+        hjorth_mob.append(mob_val) # Hjorth mobility
+        hjorth_comp.append(comp_val) # Hjorth complexity
+        delta_power.append(delta_val)
+        theta_power.append(theta_val)
+        alpha_power.append(alpha_val)
+        beta_power.append(beta_val)
+        gamma_power.append(gamma_val)
+        mob_val, comp_val = ant.hjorth_params(data_df[ch])
+        
+    features = features + hjorth_mob + hjorth_comp +  delta_power + theta_power + alpha_power + beta_power + gamma_power
+
+    #nonlinear features
     features = features + [nolds.hurst_rs(data_df[ch]) for ch in channels] # Hurst exponent
     features = features + [ant.sample_entropy(data_df[ch]) for ch in channels] # sample entropy
-    features = features + [ant.hjorth_params(data_df[ch])[0] for ch in channels] # Hjorth mobility
-    features = features + [ant.hjorth_params(data_df[ch])[1] for ch in channels] # Hjorth complexity
+    features = features + [ant.higuchi_fd(data_df[ch]) for ch in channels] # Higuchi fractional dimension
+    features = features + [ant.katz_fd(data_df[ch]) for ch in channels] # Katz fractional dimension
+    features = features + [ant.spectral_entropy(data_df[ch],sf=fs,method='welch',normalize=True) for ch in channels]
+    features = features + [ant.detrended_fluctuation(data_df[ch]) for ch in channels] # detrended fluctuation analysis
 
     return features
 
 def get_columns(ch_names):
+    eeg_bands = config['eeg_bands']
+
     mean_names = ["Mean-" + chan for chan in ch_names]
     var_names = ["Var-" + chan for chan in ch_names]
-    peak_names = ["Peak-" + chan for chan in ch_names]
+    #peak_names = ["Peak-" + chan for chan in ch_names]
     skew_names = ["Skewness-" + chan for chan in ch_names]
     kurt_names = ["Kurtosis-" + chan for chan in ch_names]
     energy_names = ["Energy-" + chan for chan in ch_names]
-    std_names = ["Std-" + chan for chan in ch_names]
-    hurst_names = ["Hurst-" + chan for chan in ch_names]
-    se_names = ["SampleEnt-" + chan for chan in ch_names]
     hjmob_names = ["HjMob-" + chan for chan in ch_names]
     hjcomp_names = ["HjComp-" + chan for chan in ch_names]
 
+    band_names = []
+    for chan in ch_names:
+        for bands in  eeg_bands:
+            band_names.append(bands+'-'+chan)
 
-    column_names = mean_names+var_names+peak_names+skew_names+kurt_names+energy_names+std_names+hurst_names+se_names+hjmob_names+hjcomp_names+['depressed']
+    hurst_names = ["Hurst-" + chan for chan in ch_names]
+    se_names = ["SampleEnt-" + chan for chan in ch_names]
+    hfd_names = ["HFD-" + chan for chan in ch_names]
+    kfd_names = ["KFD-" + chan for chan in ch_names]
+    pse_names = ["Pse-" + chan for chan in ch_names]
+    dfa_names = ["DFA-" + chan for chan in ch_names]
+
+
+    column_names = mean_names+var_names+skew_names+kurt_names+energy_names+hjmob_names+hjcomp_names+band_names+hurst_names+se_names+hfd_names+kfd_names+pse_names+dfa_names+['depressed']
     return column_names
 
 

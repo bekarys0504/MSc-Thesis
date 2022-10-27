@@ -7,11 +7,12 @@ kaleido==0.2.1
 matplotlib==3.5.3
 mne==1.1.1
 nolds==0.5.2
-numpy==1.23.2
+numpy==1.22
 omegaconf==2.2.3
 openpyxl==3.0.10
 pandas==1.4.4
 plotly==5.10.0
+pyeeg==0.0.2
 PyQt5==5.15.7
 python-dotenv==0.21.0
 scipy==1.9.1

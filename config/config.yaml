@@ -22,6 +22,13 @@ preprocess:
   BP_EDGE: [0.4, 70, 0.5, 69] # set lower stopband and passband edge frequencies for cheb2
 
 freq_sampling: 500
+random_seed: 0
+
+eeg_bands: {'Delta': [0.5, 4],
+            'Theta': [4, 8],
+            'Alpha': [8, 12],
+            'Beta': [12, 35],
+            'Gamma': [35, 70]}
 
 healthy_subjects: ['S2','S3', 'S9','S10','S12','S13','S14','S15','S19','S20','S24','S25','S30','S32','S38','S39','S42','S46','S29','S6','S23','S47','S49']
 depressed_subjects: ['S1','S4','S5','S7','S8','S11','S16','S17','S18','S21','S22','S26','S27','S31','S33','S35','S36','S37','S40','S41','S43','S44','S45']
