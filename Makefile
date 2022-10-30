@@ -29,7 +29,7 @@ requirements: test_environment
 data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/interim
 
-data2: 
+data2: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset_2.py data/raw data/interim
 
 ## Make Dataset

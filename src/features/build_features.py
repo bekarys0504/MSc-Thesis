@@ -9,7 +9,6 @@ import numpy as np
 from scipy import stats
 import nolds
 import antropy as ant
-import pyeeg as pe
 from scipy.fft import fft , rfft , fftfreq , rfftfreq
 
 @click.command()
@@ -26,7 +25,7 @@ def main(input_filepath, output_filepath):
 
     
     all_files = glob.glob('./data/interim/dataset_1_cheb2/*.csv', recursive=True)
-    all_files = [x for x in all_files if 'post' not in x] # get only pre data
+    #all_files = [x for x in all_files if 'post' not in x] # get only pre data
 
     SEGMENT_LENS = config['epochs']
     CHANNELS = config['channels']
@@ -82,28 +81,21 @@ def extract_features(data_df, channels, fs):
 
     hjorth_mob = []
     hjorth_comp = []
-    delta_power = []
-    theta_power = []
-    alpha_power = []
-    beta_power = []
-    gamma_power = []
+    band_powers = []
+
     for ch in channels:
-        fft_vals = np.abs(rfft(data_df[ch]))
-        fft_freq = rfftfreq(len(channel_data), 1.0/FS)
+        fft_vals = np.abs(rfft(data_df[ch].values))
+        fft_freq = rfftfreq(len(data_df[ch].values), 1.0/fs)
+
         for band in eeg_bands:
             freq_ix = np.where((fft_freq >= eeg_bands[band][0]) & (fft_freq <= eeg_bands[band][1]))[0]
             mean_power = np.mean(fft_vals[freq_ix ]**2)/fft_vals.size
-        delta_val, theta_val, alpha_val, beta_val, gamma_val = pe.spectrum.bin_power(data_df[ch], [0.5,4,8,12,35,70], fs)[1]
+            band_powers.append(mean_power)
+            
+        mob_val, comp_val = ant.hjorth_params(data_df[ch])
         hjorth_mob.append(mob_val) # Hjorth mobility
         hjorth_comp.append(comp_val) # Hjorth complexity
-        delta_power.append(delta_val)
-        theta_power.append(theta_val)
-        alpha_power.append(alpha_val)
-        beta_power.append(beta_val)
-        gamma_power.append(gamma_val)
-        mob_val, comp_val = ant.hjorth_params(data_df[ch])
-        
-    features = features + hjorth_mob + hjorth_comp +  delta_power + theta_power + alpha_power + beta_power + gamma_power
+    features = features + hjorth_mob+hjorth_comp+band_powers
 
     #nonlinear features
     features = features + [nolds.hurst_rs(data_df[ch]) for ch in channels] # Hurst exponent

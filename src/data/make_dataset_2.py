@@ -219,7 +219,7 @@ def filter_cheb2(data):
     max_seconds = (data.get_data().shape[1]-1)/500 # calculate total time
     data.crop(tmin=1, tmax=max_seconds-2) # crop end
 
-    fs = config['freq_smapling']
+    fs = config['freq_sampling']
     BP_EDGE = config.preprocess['BP_EDGE']
     lower_stop , upper_stop , lower_pass , upper_pass = BP_EDGE
     ws = [lower_stop/(fs*0.5), upper_stop/(fs*0.5)] # stopband edge frequencies
