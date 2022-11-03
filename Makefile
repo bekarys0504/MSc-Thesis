@@ -36,6 +36,10 @@ data2: requirements
 features: requirements
 	$(PYTHON_INTERPRETER) src/features/build_features.py data/interim data/processed
 
+## Make Dataset
+train: requirements
+	$(PYTHON_INTERPRETER) src/models/train_model.py data/processed/deep_learning_data/ data/processed
+
 ## Delete all compiled Python files
 clean:
 	find . -type f -name "*.py[co]" -delete

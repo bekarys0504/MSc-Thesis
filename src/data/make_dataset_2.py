@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import glob
 import logging
+import os
+import random
 from pathlib import Path
 
-import random
 import chart_studio.plotly as py
 import click
 import h5io
@@ -20,8 +21,7 @@ from dotenv import find_dotenv, load_dotenv
 from omegaconf import OmegaConf
 from plotly.graph_objs import Annotations, Figure, Layout, Marker, Scatter
 from plotly.graph_objs.layout import Annotation, Font, YAxis
-import os
-from scipy import stats, signal
+from scipy import signal, stats
 
 mne.set_log_level(False)
 # I had error as in this link https://github.com/open-mmlab/mmdetection/issues/7035

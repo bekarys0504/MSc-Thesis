@@ -1,15 +1,17 @@
-import click
-from dotenv import find_dotenv, load_dotenv
-from omegaconf import OmegaConf
+import glob
 import logging
 from pathlib import Path
-import glob
-import pandas as pd
-import numpy as np
-from scipy import stats
-import nolds
+
 import antropy as ant
-from scipy.fft import fft , rfft , fftfreq , rfftfreq
+import click
+import nolds
+import numpy as np
+import pandas as pd
+from dotenv import find_dotenv, load_dotenv
+from omegaconf import OmegaConf
+from scipy import stats
+from scipy.fft import fft, fftfreq, rfft, rfftfreq
+
 
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
