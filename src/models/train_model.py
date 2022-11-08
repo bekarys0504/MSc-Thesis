@@ -1,96 +1,115 @@
+import os
+import tensorflow as tf
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.schedules import CosineDecay
+from tensorflow import keras
+from tensorflow.keras import layers, models
+import numpy as np
+import math
+import random
 import logging
+import click
+from dotenv import find_dotenv, load_dotenv
+from omegaconf import OmegaConf
 from pathlib import Path
 
-import click
-import numpy as np
-import torch
-from dotenv import find_dotenv, load_dotenv
-from EEGClassification import EEGClassification
-from omegaconf import OmegaConf
-from torch.utils.data import random_split
-from torch.utils.data.dataloader import DataLoader
-from torchvision.datasets import DatasetFolder
-
-
 @click.command()
-@click.argument('input_filepath', type=click.Path(exists=True))
-@click.argument('output_filepath', type=click.Path())
 
-def main(input_filepath, output_filepath):
-    num_epochs = 5
-    opt_func = torch.optim.Adam
-    lr = 0.001
-    batch_size = 1
-    val_size = 2
+def main():
+    path = r'C:\Users\bcilab02\Documents\beka\thesis\MSc-Thesis\data\processed\deep_learning_data\train\Depressed/'
+    X = []
+    labels = []
+    for i in os.listdir(path):
+        data = np.load(path+i)
+        X.append(data)
+        labels.append(0)
 
-    data_dir = input_filepath+"train/"
-    test_data_dir = input_filepath+"test/"
+    path = r'C:\Users\bcilab02\Documents\beka\thesis\MSc-Thesis\data\processed\deep_learning_data\train\Healthy/'
+    for i in os.listdir(path):
+        data = np.load(path+i)
+        X.append(data)
+        labels.append(1)
 
-    #load the train and test data
-    dataset = DatasetFolder(
-        root=data_dir,
-        loader=npy_loader,
-        extensions='.npy'
-    )
-    test_dataset = DatasetFolder(
-        root=test_data_dir,
-        loader=npy_loader,
-        extensions='.npy'
-    )
+    y = labels
+    temp = list(zip(X, y))
+    random.shuffle(temp)
+    X, y = zip(*temp)
 
-    train_size = len(dataset) - val_size 
+    X, y = list(X), list(y)
+    X = np.array(X)
+    y = np.array(y)
+    X = X[..., np.newaxis]
 
-    train_data,val_data = random_split(dataset,[train_size,val_size])
-    print(f"Length of Train Data : {len(train_data)}")
-    print(f"Length of Validation Data : {len(val_data)}")
+    X_train      = X[0:1500,]
+    Y_train      = y[0:1500]
+    X_validate   = X[1500:,]
+    Y_validate   = y[1500:]
+
+    model=models.Sequential()
+    model.add(layers.Conv2D(16,(16,13),activation='elu',input_shape=(3000,31,1), padding="same"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.AveragePooling2D((6,6)))
+    model.add(layers.Dropout(rate=0.25))
+
+    model.add(layers.Conv2D(32,(12,5), activation='elu', padding="same"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.AveragePooling2D((4,4)))
+    model.add(layers.Dropout(rate=0.25))
+
+    model.add(layers.Conv2D(64,(10,1), activation='elu', padding="same"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.AveragePooling2D((3,1)))
+    model.add(layers.Dropout(rate=0.25))
+
+    model.add(layers.Conv2D(128,(8,1), activation='elu', padding="same"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.AveragePooling2D((2 ,1)))
+    model.add(layers.Dropout(rate=0.25))
+
+    model.add(layers.Conv2D(256,(6,1), activation='elu', padding="same"))
+    model.add(layers.BatchNormalization())
+    model.add(layers.AveragePooling2D((2,1)))
+    model.add(layers.Dropout(rate=0.25))
+
+    model.add(layers.Flatten())
+    #model.add(layers.Dense(50, activation='elu'))
+    model.add(layers.Dense(2))
+    model.summary()
 
 
-    #load the train and validation into batches.
-    train_dl = DataLoader(train_data, batch_size, shuffle = True, num_workers = 4, pin_memory = True)
-    val_dl = DataLoader(val_data, batch_size*2, num_workers = 4, pin_memory = True)
+    EPOCHS = 200
+    BATCH_SIZE = 32
+    step_per_epoch = math.ceil(X_train.shape[0]/BATCH_SIZE)
+    STEP_TOTAL = step_per_epoch * EPOCHS
+    INIT_LEARNING_RATE =  0.001
 
-    model = EEGClassification()
-    #fitting the model on training data and record the result after each epoch
-    history = fit(num_epochs, lr, model, train_dl, val_dl, opt_func)
+    lr_schedule=CosineDecay(INIT_LEARNING_RATE,STEP_TOTAL,
+                                                        alpha=0.0,
+                                                        name=None)
+    optimizer =Adam(learning_rate=lr_schedule)
 
-def accuracy(outputs, labels):
-    _, preds = torch.max(outputs, dim=1)
-    return torch.tensor(torch.sum(preds == labels).item() / len(preds))
+    model.compile(optimizer=optimizer,
+                loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                metrics=['accuracy']
+                )
 
-  
-@torch.no_grad()
-def evaluate(model, val_loader):
-    model.eval()
-    outputs = [model.validation_step(batch) for batch in val_loader]
-    return model.validation_epoch_end(outputs)
 
-  
-def fit(epochs, lr, model, train_loader, val_loader, opt_func = torch.optim.SGD):
-    
-    history = []
-    optimizer = opt_func(model.parameters(),lr)
-    for epoch in range(epochs):
-        model.double()
-        model.train()
-        train_losses = []
-        for batch in train_loader:
-            loss = model.training_step(batch)
-            train_losses.append(loss)
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-            
-        result = evaluate(model, val_loader)
-        result['train_loss'] = torch.stack(train_losses).mean().item()
-        model.epoch_end(epoch, result)
-        history.append(result)
-    
-    return history
+    checkpoint_filepath = './models/weights/best.hdf5'
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='val_accuracy',
+        mode='max',
+        save_best_only=True)
 
-def npy_loader(path):
-    sample = torch.from_numpy(np.load(path))
-    return sample
+    history = model.fit(X_train,Y_train,
+                        epochs=EPOCHS,
+                        validation_data=(X_validate,Y_validate),
+                        batch_size=BATCH_SIZE,
+                        shuffle=True,
+                        callbacks=[model_checkpoint_callback])
 
+    test_predictions = model.predict(x = X_validate)
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
