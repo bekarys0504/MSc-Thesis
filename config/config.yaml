@@ -66,4 +66,4 @@ n_folds: 10
 deep_learning_hp:
   lr: 0.001
   batch_size: 32
-  epochs: 200
+  epochs: 2

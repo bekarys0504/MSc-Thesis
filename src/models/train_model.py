@@ -20,6 +20,7 @@ wandb.init(project="DeepEEG", entity="bekarys")
 config = OmegaConf.load('./config/config.yaml')
 
 tf.random.set_seed(config['random_seed'])
+np.random.seed(config['random_seed'])
 
 @click.command()
 
