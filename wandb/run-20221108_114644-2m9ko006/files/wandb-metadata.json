@@ -1,0 +1,44 @@
+{
+    "os": "Windows-10-10.0.19044-SP0",
+    "python": "3.9.12",
+    "heartbeatAt": "2022-11-08T10:46:44.776519",
+    "startedAt": "2022-11-08T10:46:44.140221",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "C:\\Users\\bcilab02\\Documents\\beka\\thesis\\MSc-Thesis\\src\\models\\train_model.py",
+    "codePath": "src\\models\\train_model.py",
+    "host": "DESKTOP-I4VOALP",
+    "username": "bcilab02",
+    "executable": "C:\\Users\\bcilab02\\miniconda3\\envs\\tf\\python.exe",
+    "cpu_count": 4,
+    "cpu_count_logical": 4,
+    "cpu_freq": {
+        "current": 3792.0,
+        "min": 0.0,
+        "max": 3792.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3792.0,
+            "min": 0.0,
+            "max": 3792.0
+        }
+    ],
+    "disk": {
+        "total": 476.3264808654785,
+        "used": 442.9237289428711
+    },
+    "gpu": "NVIDIA GeForce GTX 1080",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce GTX 1080",
+            "memory_total": 8589934592
+        }
+    ],
+    "memory": {
+        "total": 47.87093734741211
+    }
+}
