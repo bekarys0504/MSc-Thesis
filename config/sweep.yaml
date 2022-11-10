@@ -1,0 +1,21 @@
+# sweep.yaml
+program: ../src/models/train_model.py
+method: random
+metric:
+ name: val_loss
+ goal: minimize
+parameters:
+ learning-rate:
+   min: 0.00001
+   max: 0.1
+ optimizer:
+   values: ["adam", "sgd"]
+ hidden_layer_size:
+   values: [96, 128, 148]
+ epochs:
+   value: 27
+early_terminate:
+   type: hyperband
+   s: 2
+   eta: 3
+   max_iter: 27

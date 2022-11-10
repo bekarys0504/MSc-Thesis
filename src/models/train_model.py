@@ -25,7 +25,7 @@ np.random.seed(config['random_seed'])
 @click.command()
 
 def main():
-    path = r'C:\Users\bcilab02\Documents\beka\thesis\MSc-Thesis\data\processed\deep_learning_data\train\Depressed/'
+    path = r'.\data\processed\deep_learning_data\train\Depressed/'
     X = []
     labels = []
     for i in os.listdir(path):
@@ -33,7 +33,7 @@ def main():
         X.append(data)
         labels.append(0)
 
-    path = r'C:\Users\bcilab02\Documents\beka\thesis\MSc-Thesis\data\processed\deep_learning_data\train\Healthy/'
+    path = r'.\data\processed\deep_learning_data\train\Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
@@ -59,11 +59,14 @@ def main():
     INIT_LEARNING_RATE =  config['deep_learning_hp']['lr']
     step_per_epoch = math.ceil(X_train.shape[0]/BATCH_SIZE)
     STEP_TOTAL = step_per_epoch * EPOCHS
+    DROPOUT_RATE =  config['deep_learning_hp']['dropout_rate']
 
     wandb.config.update({
     "learning_rate": INIT_LEARNING_RATE,
     "epochs": EPOCHS,
-    "batch_size": BATCH_SIZE
+    "batch_size": BATCH_SIZE,
+    "dropout_rate": DROPOUT_RATE,
+    "pooling": 'max_pooling'
     })
 
     lr_schedule=CosineDecay(INIT_LEARNING_RATE, STEP_TOTAL,
@@ -71,7 +74,7 @@ def main():
                                                 name=None)
     optimizer =Adam(learning_rate=lr_schedule)
     
-    model = get_model()
+    model = get_model(dropout_rate=DROPOUT_RATE)
     model.compile(optimizer=optimizer,
                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                 metrics=['accuracy']
@@ -91,7 +94,7 @@ def main():
 
 def get_callback():
     directory = './models/weights/exp'
-    for i in range(1, 10):
+    for i in range(1, 100):
         if not os.path.exists(directory+str(i)):
             os.makedirs(directory+str(i))
             break
@@ -107,33 +110,33 @@ def get_callback():
     return model_checkpoint_callback
 
 
-def get_model(input_shape=(3000,31,1)):
+def get_model(input_shape=(3000,31,1), dropout_rate=0.25):
     model=models.Sequential()
-    model.add(layers.Conv2D(16,(16,13),activation='elu',input_shape=(3000,31,1), padding="same"))
+    model.add(layers.Conv2D(16,(16,13),activation='elu',input_shape=input_shape, padding="same"))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((6,6)))
-    model.add(layers.Dropout(rate=0.25))
+    model.add(layers.Dropout(rate=dropout_rate))
 
     model.add(layers.Conv2D(32,(12,5), activation='elu', padding="same"))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((4,4)))
-    model.add(layers.Dropout(rate=0.25))
+    model.add(layers.Dropout(rate=dropout_rate))
 
     model.add(layers.Conv2D(64,(10,1), activation='elu', padding="same"))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((3,1)))
-    model.add(layers.Dropout(rate=0.25))
+    model.add(layers.Dropout(rate=dropout_rate))
 
     model.add(layers.Conv2D(128,(8,1), activation='elu', padding="same"))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((2 ,1)))
-    model.add(layers.Dropout(rate=0.25))
-
+    model.add(layers.Dropout(rate=dropout_rate))
+    '''
     model.add(layers.Conv2D(256,(6,1), activation='elu', padding="same"))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((2,1)))
-    model.add(layers.Dropout(rate=0.25))
-
+    model.add(layers.Dropout(rate=dropout_rate))
+    '''
     model.add(layers.Flatten())
     #model.add(layers.Dense(50, activation='elu'))
     model.add(layers.Dense(2))

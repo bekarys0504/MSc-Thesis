@@ -64,6 +64,7 @@ feature_percentages: [25, 50, 75, 90, 'all']
 n_folds: 10
 
 deep_learning_hp:
-  lr: 0.001
+  lr: 0.0005
   batch_size: 32
-  epochs: 2
+  epochs: 200
+  dropout_rate: 0.3
