@@ -75,8 +75,10 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
+# exclude data and models weights from source control by default
 /data/
+/models/
+/wandb/
 
 # Mac OS-specific storage files
 .DS_Store
