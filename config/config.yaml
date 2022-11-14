@@ -54,7 +54,7 @@ noisy_recs: [
     "S47_pre_EO1_EEG", "S52_Pre_EC"
 ]
 
-channels: [ ['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7', 'PC8', 'PC9', 'PC10'], ['Fp1', 'Fp2', 'Fpz'], [FT7, FT8, T6, T5, TP7, TP8], ['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
+channels: [ ['PC1', 'PC2', 'PC3', 'PC4', 'PC5'], ['Fp1', 'Fp2', 'Fpz'], [FT7, FT8, T6, T5, TP7, TP8], ['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
 'P3', 'P4', 'FT7', 'FT8', 'O1', 'O2', 'C3', 'C4']]
 
 epochs: [2, 4, 10, 20]
