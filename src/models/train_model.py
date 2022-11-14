@@ -16,6 +16,7 @@ from tensorflow.keras.layers import LeakyReLU
 from sklearn.metrics import accuracy_score
 from tensorflow.keras import regularizers
 from wandb.keras import WandbCallback
+import pickle
 
 os.environ['PYTHONHASHSEED'] = '0'
 wandb.init(project="DeepEEG", entity="bekarys")
@@ -29,29 +30,12 @@ random.seed(config['random_seed'])
 @click.command()
 
 def main():
-    
     '''
-     
-    data_path = r'.\data\processed\deep_learning_data\1s/'
+    data_path = r'.\data\processed\deep_learning_data\1s_ec/'
     X_train, Y_train = get_data(data_path+'train/')
     X_val, Y_val = get_data(data_path+'val/')
 
     X_test, Y_test = get_data(data_path+'test/')
-
-    neg, pos = np.bincount(Y_train)
-    total = neg + pos
-    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
-        total, pos, 100 * pos / total))
-    
-    neg, pos = np.bincount(Y_val)
-    total = neg + pos
-    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
-        total, pos, 100 * pos / total))
-
-    neg, pos = np.bincount(Y_test)
-    total = neg + pos
-    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
-        total, pos, 100 * pos / total))
 
     ''' 
     path = r'.\data\processed\deep_learning_data\no_overlap_data\Depressed/'
@@ -60,13 +44,13 @@ def main():
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
-        labels.append(0)
+        labels.append(1)
 
     path = r'.\data\processed\deep_learning_data\no_overlap_data\Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
-        labels.append(1)
+        labels.append(0)
 
     y = labels
     temp = list(zip(X, y))
@@ -85,6 +69,21 @@ def main():
     X_test   = X[6700:,]
     Y_test   = y[6700:]
 
+    neg, pos = np.bincount(Y_train)
+    total = neg + pos
+    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+        total, pos, 100 * pos / total))
+    
+    neg, pos = np.bincount(Y_val)
+    total = neg + pos
+    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+        total, pos, 100 * pos / total))
+
+    neg, pos = np.bincount(Y_test)
+    total = neg + pos
+    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+        total, pos, 100 * pos / total))
+    
     EPOCHS = config['deep_learning_hp']['epochs']
     BATCH_SIZE = config['deep_learning_hp']['batch_size']
     INIT_LEARNING_RATE =  config['deep_learning_hp']['lr']
@@ -111,8 +110,11 @@ def main():
                 metrics=['accuracy']
                 )
 
-
     model_checkpoint_callback, model_path = get_callback()
+
+    # save test files
+    np.save(model_path+'/x_test.npy', X_test)
+    np.save(model_path+'/y_test.npy', Y_test)
 
     history = model.fit(X_train,Y_train,
                         epochs=EPOCHS,
@@ -121,8 +123,10 @@ def main():
                         shuffle=True,
                         callbacks=[model_checkpoint_callback, WandbCallback()])
 
-    np.savetxt(model_path+'/history.txt', history)
-    
+    with open(model_path+'/trainHistoryDict', 'wb') as file_pi:
+        print('saving logs in ', model_path+'/trainHistoryDict')
+        pickle.dump(history.history, file_pi)
+
     test_predictions = model.predict(x = X_test)
     predictions = np.argmax(test_predictions, axis=1)
     print(predictions)
@@ -163,7 +167,7 @@ def get_callback():
     
     model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
         filepath=checkpoint_filepath,
-        save_weights_only=True,
+        save_weights_only=False,
         monitor='val_accuracy',
         mode='max',
         save_best_only=True)
@@ -173,41 +177,42 @@ def get_callback():
 def get_model(input_shape=(500,31,1), dropout_rate=0.25):
 
     model=models.Sequential()
-    model.add(layers.Conv2D(5,(11,7),input_shape=input_shape, padding="same"))
+    model.add(layers.Conv2D(3,(11,7),input_shape=input_shape, padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(8,(11,7), padding="same"))
+    model.add(layers.Conv2D(5,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(8,(11,7), padding="same"))
+    model.add(layers.Conv2D(5,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2, 1)))
     model.add(layers.Dropout(rate=dropout_rate))
     
+    '''   
     model.add(layers.Conv2D(10,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,1)))
     model.add(layers.Dropout(rate=dropout_rate))
-    
+
     model.add(layers.Conv2D(16,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((2,1)))
     model.add(layers.Dropout(rate=dropout_rate))
-    
+    '''
     model.add(layers.Flatten())
-    model.add(layers.Dense(1024))
-    model.add(LeakyReLU(alpha=0.1))
-    model.add(layers.Dropout(rate=dropout_rate))
-    model.add(layers.Flatten())
+    #model.add(layers.Dense(1024))
+    #model.add(LeakyReLU(alpha=0.1))
+    #model.add(layers.Dropout(rate=dropout_rate))
+    #model.add(layers.Flatten())
     model.add(layers.Dense(256))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.Dropout(rate=dropout_rate))
