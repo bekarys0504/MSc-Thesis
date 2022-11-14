@@ -2,7 +2,6 @@ import os
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.optimizers.schedules import CosineDecay
-from tensorflow import keras
 from tensorflow.keras import layers, models
 import numpy as np
 import math
@@ -13,19 +12,49 @@ from dotenv import find_dotenv, load_dotenv
 from omegaconf import OmegaConf
 from pathlib import Path
 import wandb
-
+from tensorflow.keras.layers import LeakyReLU
+from sklearn.metrics import accuracy_score
+from tensorflow.keras import regularizers
 from wandb.keras import WandbCallback
 
+os.environ['PYTHONHASHSEED'] = '0'
 wandb.init(project="DeepEEG", entity="bekarys")
 config = OmegaConf.load('./config/config.yaml')
 
+# set randomm seed for reproducability
 tf.random.set_seed(config['random_seed'])
 np.random.seed(config['random_seed'])
+random.seed(config['random_seed'])
 
 @click.command()
 
 def main():
-    path = r'C:\Users\bcilab02\Documents\beka\thesis\MSc-Thesis\data\processed\deep_learning_data\train\Depressed/'
+    
+    '''
+     
+    data_path = r'.\data\processed\deep_learning_data\1s/'
+    X_train, Y_train = get_data(data_path+'train/')
+    X_val, Y_val = get_data(data_path+'val/')
+
+    X_test, Y_test = get_data(data_path+'test/')
+
+    neg, pos = np.bincount(Y_train)
+    total = neg + pos
+    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+        total, pos, 100 * pos / total))
+    
+    neg, pos = np.bincount(Y_val)
+    total = neg + pos
+    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+        total, pos, 100 * pos / total))
+
+    neg, pos = np.bincount(Y_test)
+    total = neg + pos
+    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+        total, pos, 100 * pos / total))
+
+    ''' 
+    path = r'.\data\processed\deep_learning_data\no_overlap_data\Depressed/'
     X = []
     labels = []
     for i in os.listdir(path):
@@ -33,7 +62,7 @@ def main():
         X.append(data)
         labels.append(0)
 
-    path = r'C:\Users\bcilab02\Documents\beka\thesis\MSc-Thesis\data\processed\deep_learning_data\train\Healthy/'
+    path = r'.\data\processed\deep_learning_data\no_overlap_data\Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
@@ -49,21 +78,26 @@ def main():
     y = np.array(y)
     X = X[..., np.newaxis]
 
-    X_train      = X[0:1500,]
-    Y_train      = y[0:1500]
-    X_validate   = X[1500:,]
-    Y_validate   = y[1500:]
-        
+    X_train      = X[0:5700,]
+    Y_train      = y[0:5700]
+    X_val   = X[5700:6700,]
+    Y_val   = y[5700:6700]
+    X_test   = X[6700:,]
+    Y_test   = y[6700:]
+
     EPOCHS = config['deep_learning_hp']['epochs']
     BATCH_SIZE = config['deep_learning_hp']['batch_size']
     INIT_LEARNING_RATE =  config['deep_learning_hp']['lr']
     step_per_epoch = math.ceil(X_train.shape[0]/BATCH_SIZE)
     STEP_TOTAL = step_per_epoch * EPOCHS
+    DROPOUT_RATE =  config['deep_learning_hp']['dropout_rate']
 
     wandb.config.update({
     "learning_rate": INIT_LEARNING_RATE,
     "epochs": EPOCHS,
-    "batch_size": BATCH_SIZE
+    "batch_size": BATCH_SIZE,
+    "dropout_rate": DROPOUT_RATE,
+    "pooling": 'max_pooling'
     })
 
     lr_schedule=CosineDecay(INIT_LEARNING_RATE, STEP_TOTAL,
@@ -71,27 +105,56 @@ def main():
                                                 name=None)
     optimizer =Adam(learning_rate=lr_schedule)
     
-    model = get_model()
+    model = get_model(input_shape=(X_train.shape[1],31,1),dropout_rate=DROPOUT_RATE)
     model.compile(optimizer=optimizer,
                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                 metrics=['accuracy']
                 )
 
 
-    model_checkpoint_callback = get_callback()
+    model_checkpoint_callback, model_path = get_callback()
 
     history = model.fit(X_train,Y_train,
                         epochs=EPOCHS,
-                        validation_data=(X_validate,Y_validate),
+                        validation_data=(X_val,Y_val),
                         batch_size=BATCH_SIZE,
                         shuffle=True,
                         callbacks=[model_checkpoint_callback, WandbCallback()])
 
-    test_predictions = model.predict(x = X_validate)
+    np.savetxt(model_path+'/history.txt', history)
+    
+    test_predictions = model.predict(x = X_test)
+    predictions = np.argmax(test_predictions, axis=1)
+    print(predictions)
+    print(Y_test)
+    print('Test accuracy: ',accuracy_score(Y_test, predictions))
+
+def get_data(data_path):
+    X = []
+    labels = []
+
+    for i in os.listdir(data_path+'Depressed/'):
+        data = np.load(data_path+'Depressed/'+i)
+        if not np.any(np.isnan(data)):
+            X.append(data)
+            labels.append(1)
+
+
+    for i in os.listdir(data_path+'Healthy/'):
+        data = np.load(data_path+'Healthy/'+i)
+
+        if not np.any(np.isnan(data)):
+            X.append(data)
+            labels.append(0)
+
+    X = np.array(X)
+    labels = np.array(labels)
+    X = X[..., np.newaxis]
+    return X, labels
 
 def get_callback():
     directory = './models/weights/exp'
-    for i in range(1, 10):
+    for i in range(1, 100):
         if not os.path.exists(directory+str(i)):
             os.makedirs(directory+str(i))
             break
@@ -104,39 +167,51 @@ def get_callback():
         monitor='val_accuracy',
         mode='max',
         save_best_only=True)
-    return model_checkpoint_callback
+    return model_checkpoint_callback, directory+str(i)
 
 
-def get_model(input_shape=(3000,31,1)):
+def get_model(input_shape=(500,31,1), dropout_rate=0.25):
+
     model=models.Sequential()
-    model.add(layers.Conv2D(16,(16,13),activation='elu',input_shape=(3000,31,1), padding="same"))
+    model.add(layers.Conv2D(5,(11,7),input_shape=input_shape, padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.AveragePooling2D((6,6)))
-    model.add(layers.Dropout(rate=0.25))
+    model.add(layers.MaxPooling2D((2,2)))
+    model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(32,(12,5), activation='elu', padding="same"))
+    model.add(layers.Conv2D(8,(11,7), padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.AveragePooling2D((4,4)))
-    model.add(layers.Dropout(rate=0.25))
+    model.add(layers.MaxPooling2D((2,2)))
+    model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(64,(10,1), activation='elu', padding="same"))
+    model.add(layers.Conv2D(8,(11,7), padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.AveragePooling2D((3,1)))
-    model.add(layers.Dropout(rate=0.25))
-
-    model.add(layers.Conv2D(128,(8,1), activation='elu', padding="same"))
+    model.add(layers.MaxPooling2D((2, 1)))
+    model.add(layers.Dropout(rate=dropout_rate))
+    
+    model.add(layers.Conv2D(10,(11,7), padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.AveragePooling2D((2 ,1)))
-    model.add(layers.Dropout(rate=0.25))
-
-    model.add(layers.Conv2D(256,(6,1), activation='elu', padding="same"))
+    model.add(layers.MaxPooling2D((2,1)))
+    model.add(layers.Dropout(rate=dropout_rate))
+    
+    model.add(layers.Conv2D(16,(11,7), padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((2,1)))
-    model.add(layers.Dropout(rate=0.25))
-
+    model.add(layers.Dropout(rate=dropout_rate))
+    
     model.add(layers.Flatten())
-    #model.add(layers.Dense(50, activation='elu'))
-    model.add(layers.Dense(2))
+    model.add(layers.Dense(1024))
+    model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Dropout(rate=dropout_rate))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(256))
+    model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Dropout(rate=dropout_rate))
+    model.add(layers.Dense(2, activation='softmax'))
 
     return model
 
