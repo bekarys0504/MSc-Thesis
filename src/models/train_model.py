@@ -30,7 +30,7 @@ random.seed(config['random_seed'])
 @click.command()
 
 def main():
-    '''
+
     data_path = r'.\data\processed\deep_learning_data\1s_ec/'
     X_train, Y_train = get_data(data_path+'train/')
     X_val, Y_val = get_data(data_path+'val/')
@@ -38,7 +38,7 @@ def main():
     X_test, Y_test = get_data(data_path+'test/')
 
     ''' 
-    path = r'.\data\processed\deep_learning_data\no_overlap_data\Depressed/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data\Depressed/'
     X = []
     labels = []
     for i in os.listdir(path):
@@ -46,7 +46,7 @@ def main():
         X.append(data)
         labels.append(1)
 
-    path = r'.\data\processed\deep_learning_data\no_overlap_data\Healthy/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data\Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
@@ -68,7 +68,7 @@ def main():
     Y_val   = y[5700:6700]
     X_test   = X[6700:,]
     Y_test   = y[6700:]
-
+    '''
     neg, pos = np.bincount(Y_train)
     total = neg + pos
     print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
@@ -104,7 +104,7 @@ def main():
                                                 name=None)
     optimizer =Adam(learning_rate=lr_schedule)
     
-    model = get_model(input_shape=(X_train.shape[1],31,1),dropout_rate=DROPOUT_RATE)
+    model = get_model(input_shape=(X_train.shape[1],X_train.shape[2],1),dropout_rate=DROPOUT_RATE)
     model.compile(optimizer=optimizer,
                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                 metrics=['accuracy']
@@ -177,20 +177,20 @@ def get_callback():
 def get_model(input_shape=(500,31,1), dropout_rate=0.25):
 
     model=models.Sequential()
-    model.add(layers.Conv2D(3,(11,7),input_shape=input_shape, padding="same"))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Conv2D(1,(5,3), input_shape=input_shape, padding="same", activation='elu'))
+    #model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(5,(11,7), padding="same"))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Conv2D(2,(5,3), padding="same", activation='elu'))
+    #model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(5,(11,7), padding="same"))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Conv2D(2,(5,3), padding="same", activation='elu'))
+    #model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2, 1)))
     model.add(layers.Dropout(rate=dropout_rate))
@@ -213,7 +213,7 @@ def get_model(input_shape=(500,31,1), dropout_rate=0.25):
     #model.add(LeakyReLU(alpha=0.1))
     #model.add(layers.Dropout(rate=dropout_rate))
     #model.add(layers.Flatten())
-    model.add(layers.Dense(256))
+    model.add(layers.Dense(100))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.Dropout(rate=dropout_rate))
     model.add(layers.Dense(2, activation='softmax'))

@@ -30,7 +30,7 @@ data: requirements
 	$(PYTHON_INTERPRETER) src/data/make_dataset.py data/raw data/interim
 
 data2: requirements
-	$(PYTHON_INTERPRETER) src/data/make_dataset_2.py data/raw data/interim
+	$(PYTHON_INTERPRETER) src/data/make_dataset_2.py data/raw data/interim/Dataset_2
 
 ## Make Dataset
 features: requirements

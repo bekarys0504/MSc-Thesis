@@ -51,13 +51,9 @@ def main(input_filepath, output_filepath):
     dataset = 'Dataset2'
     layout = read_montage()
 
-    if dataset == 'Dataset1':
-        all_files = glob.glob(input_filepath+'/Dataset_1/All Participants//**/*.edf', recursive=True)
-    if dataset == 'Dataset1_1':
-        all_files = glob.glob(input_filepath+'/Dataset_1/**//**/*.set', recursive=True)
-    if dataset == 'Dataset2':
-        all_files = glob.glob(input_filepath+'/Dataset_2/*.edf', recursive=True)
-        
+    all_files = glob.glob(input_filepath+'/Dataset_2/*.edf', recursive=True)
+    all_files = [x for x in all_files if 'task' not in x.lower()]
+    
     all_files = remove_noisy_data(all_files, config)
     random.shuffle(all_files)
     df = pd.DataFrame(columns=['fname', 'channels', 'length', 'ic_removed'])
@@ -74,7 +70,7 @@ def main(input_filepath, output_filepath):
         if dataset == 'Dataset1_1':
             raw = mne.io.read_raw_eeglab(files, preload=True);
         
-        #raw = rename_channels(raw)
+        raw = rename_channels(raw)
         raw_filtered = filter_cheb2(raw)
         
         # perform ica
@@ -262,7 +258,7 @@ def perform_ica(data, step=1):
     
     # ICA parameters
     random_state = 42   # ensures ICA is reproducable each time it's run
-    ica_n_components = len(data.info['ch_names'])     # Specify n_components as a decimal to set % explained variance
+    ica_n_components = len(data.info['ch_names']) - len(data.info['bads'])     # Specify n_components as a decimal to set % explained variance
 
     # Fit ICA
     ica = mne.preprocessing.ICA(n_components=ica_n_components,
@@ -286,20 +282,21 @@ def perform_ica(data, step=1):
 
 def rename_channels(data):
     """
-    rename channels to remove 'EEG', '-A1' and '-A2'
+    rename channels to remove 'EEG', '-LE' and '-A1'
     """
     ch_names_dict = {}
     for i in range(data.get_data().shape[0]):
         ch_name = data.info['chs'][i]['ch_name']
         ch_name_new = ch_name
         ch_name_new = ch_name_new.replace('EEG ', '')
+        ch_name_new = ch_name_new.replace('-LE', '')
         ch_name_new = ch_name_new.replace('-A1', '')
-        ch_name_new = ch_name_new.replace('-A2', '')
         ch_names_dict[ch_name] = ch_name_new
 
     mne.rename_channels(data.info, ch_names_dict)
     
-    not_matching_channels = list(set(data.info['ch_names'][:-1]) - set(config['ch_names']))
+    not_matching_channels = list(set(data.info['ch_names'][:-1]) - set(config['ch_names_2']))
+    print(not_matching_channels)
     if len(not_matching_channels):
         data.info['bads'].extend(not_matching_channels)
 
