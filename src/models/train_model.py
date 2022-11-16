@@ -30,14 +30,14 @@ random.seed(config['random_seed'])
 @click.command()
 
 def main():
-
+    '''
     data_path = r'.\data\processed\deep_learning_data\1s_ec/'
     X_train, Y_train = get_data(data_path+'train/')
     X_val, Y_val = get_data(data_path+'val/')
-
     X_test, Y_test = get_data(data_path+'test/')
 
     ''' 
+
     path = r'.\data\processed\deep_learning_data\19_ch_data\Depressed/'
     X = []
     labels = []
@@ -60,6 +60,7 @@ def main():
     X, y = list(X), list(y)
     X = np.array(X)
     y = np.array(y)
+
     X = X[..., np.newaxis]
 
     X_train      = X[0:5700,]
@@ -68,22 +69,40 @@ def main():
     Y_val   = y[5700:6700]
     X_test   = X[6700:,]
     Y_test   = y[6700:]
-    '''
+
+    # print class percentages
     neg, pos = np.bincount(Y_train)
     total = neg + pos
-    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+    print('Train: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
         total, pos, 100 * pos / total))
     
     neg, pos = np.bincount(Y_val)
     total = neg + pos
-    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+    print('Validation: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
         total, pos, 100 * pos / total))
 
     neg, pos = np.bincount(Y_test)
     total = neg + pos
-    print('Examples:\n    Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+    print('Test: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
+        total, pos, 100 * pos / total))
+
+    neg, pos = np.bincount(y)
+    total = neg + pos
+    print('Total: {}\n    Positive: {} ({:.2f}% of total)\n'.format(
         total, pos, 100 * pos / total))
     
+    initial_bias = np.log([pos/neg])
+
+    # Scaling by total/2 helps keep the loss to a similar magnitude.
+    # The sum of the weights of all examples stays the same.
+    weight_for_0 = (1 / neg) * (total / 2.0)
+    weight_for_1 = (1 / pos) * (total / 2.0)
+
+    class_weight = {0: weight_for_0, 1: weight_for_1}
+
+    print('Weight for class 0: {:.2f}'.format(weight_for_0))
+    print('Weight for class 1: {:.2f}'.format(weight_for_1))
+
     EPOCHS = config['deep_learning_hp']['epochs']
     BATCH_SIZE = config['deep_learning_hp']['batch_size']
     INIT_LEARNING_RATE =  config['deep_learning_hp']['lr']
@@ -104,7 +123,7 @@ def main():
                                                 name=None)
     optimizer =Adam(learning_rate=lr_schedule)
     
-    model = get_model(input_shape=(X_train.shape[1],X_train.shape[2],1),dropout_rate=DROPOUT_RATE)
+    model = get_model(input_shape=(X_train.shape[1],X_train.shape[2],1),dropout_rate=DROPOUT_RATE, output_bias=initial_bias)
     model.compile(optimizer=optimizer,
                 loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                 metrics=['accuracy']
@@ -121,7 +140,8 @@ def main():
                         validation_data=(X_val,Y_val),
                         batch_size=BATCH_SIZE,
                         shuffle=True,
-                        callbacks=[model_checkpoint_callback, WandbCallback()])
+                        callbacks=[model_checkpoint_callback, WandbCallback()], 
+                        class_weight=class_weight)
 
     with open(model_path+'/trainHistoryDict', 'wb') as file_pi:
         print('saving logs in ', model_path+'/trainHistoryDict')
@@ -174,23 +194,23 @@ def get_callback():
     return model_checkpoint_callback, directory+str(i)
 
 
-def get_model(input_shape=(500,31,1), dropout_rate=0.25):
+def get_model(input_shape=(500,31,1), dropout_rate=0.25, output_bias=0):
 
     model=models.Sequential()
-    model.add(layers.Conv2D(1,(5,3), input_shape=input_shape, padding="same", activation='elu'))
-    #model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Conv2D(1,(5,3), input_shape=input_shape, padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(2,(5,3), padding="same", activation='elu'))
-    #model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Conv2D(2,(5,3), padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(2,(5,3), padding="same", activation='elu'))
-    #model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Conv2D(2,(5,3), padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2, 1)))
     model.add(layers.Dropout(rate=dropout_rate))
@@ -212,11 +232,10 @@ def get_model(input_shape=(500,31,1), dropout_rate=0.25):
     #model.add(layers.Dense(1024))
     #model.add(LeakyReLU(alpha=0.1))
     #model.add(layers.Dropout(rate=dropout_rate))
-    #model.add(layers.Flatten())
     model.add(layers.Dense(100))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.Dropout(rate=dropout_rate))
-    model.add(layers.Dense(2, activation='softmax'))
+    model.add(layers.Dense(2, activation='softmax', bias_initializer=tf.keras.initializers.Constant(output_bias)))
 
     return model
 

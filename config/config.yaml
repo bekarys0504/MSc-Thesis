@@ -22,6 +22,7 @@ preprocess:
   BP_EDGE: [0.4, 70, 0.5, 69] # set lower stopband and passband edge frequencies for cheb2
 
 freq_sampling: 500
+freq_sampling_2: 256
 random_seed: 42
 
 eeg_bands: {'Delta': [0.5, 4],
@@ -58,8 +59,7 @@ channels: [ ['PC1', 'PC2', 'PC3', 'PC4', 'PC5'], ['Fp1', 'Fp2', 'Fpz'], [FT7, FT
 'P3', 'P4', 'FT7', 'FT8', 'O1', 'O2', 'C3', 'C4']]
 
 # fully compatible channels
-channels_new: [ ['PC1', 'PC2', 'PC3', 'PC4', 'PC5'], ['Fp1', 'Fp2', 'Fz'], [F7, F8, T3, T4, T5, T6], ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4', 'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']]
-channels_2: [ ['PC1', 'PC2', 'PC3', 'PC4', 'PC5'], ['Fp1', 'Fp2', 'Fz'], [F7, F8, T3, T4, T5, T6], ['Fp1', 'Fp2', 'F7', 'F3', 'Fz',  'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4',  'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']]
+channels_2: [ ['Fp1', 'Fp2', 'Fz'], [F7, F8, T3, T4, T5, T6], ['Fp1', 'Fp2', 'F7', 'F3', 'Fz',  'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4',  'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2'], ['PC1', 'PC2', 'PC3', 'PC4', 'PC5']]
 
 epochs: [2, 4, 10, 20]
 
@@ -71,6 +71,6 @@ deep_learning_hp:
   lr: 0.0005
   batch_size: 4
   epochs: 200
-  dropout_rate: 0.7
+  dropout_rate: 0.3
   chs: ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4', 'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']
   chs_2: ['Fp1', 'Fp2', 'F7', 'F3', 'Fz',  'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4',  'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']

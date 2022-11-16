@@ -11,7 +11,7 @@ from dotenv import find_dotenv, load_dotenv
 from omegaconf import OmegaConf
 from scipy import stats
 from scipy.fft import fft, fftfreq, rfft, rfftfreq
-
+from sklearn.decomposition import PCA
 
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
@@ -26,12 +26,12 @@ def main(input_filepath, output_filepath):
     logger.info('Building features')
 
     
-    all_files = glob.glob('./data/interim/dataset_1_cheb2/*.csv', recursive=True)
-    #all_files = [x for x in all_files if 'post' not in x] # get only pre data
+    all_files = glob.glob(input_filepath+'/Dataset_2/*.csv', recursive=True)
+    all_files = [x for x in all_files if 'post' not in x] # get only pre data
 
     SEGMENT_LENS = config['epochs']
-    CHANNELS = config['channels']
-    fs = config['freq_sampling']
+    CHANNELS = config['channels_2']
+    fs = config['freq_sampling_2']
 
     for channels in CHANNELS:
         for segment_len in SEGMENT_LENS:
@@ -42,7 +42,13 @@ def main(input_filepath, output_filepath):
             
             for file in all_files:
                 data = pd.read_csv(file)
-                data = data[channels]
+                print(file)
+                if 'PC1' in channels:
+                    pca = PCA(n_components=len(channels))
+                    pca.fit(data[config['ch_names_2']])
+                    data = pd.DataFrame(pca.transform(data[config['ch_names_2']]), columns=channels)
+                else:
+                    data = data[channels]
                 subject_class = [0 if 'healthy' in file else 1]
 
                 segments = split_into_segments(data, segment_len, fs)
@@ -50,10 +56,10 @@ def main(input_filepath, output_filepath):
                 for i, segment in enumerate(segments.values()):
                     features = extract_features(segment, channels, fs)
                     features_df.loc[len(features_df)] = features+subject_class
-            
+                
             print('Saving pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
-            
-            features_df.to_csv(output_filepath+'/Dataset_1/cheb_2/pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
+
+            features_df.to_csv(output_filepath+'/Dataset_2/pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
 
 # function to split data into segments
 def split_into_segments(df,split_seg_len ,fs):
@@ -70,9 +76,6 @@ def split_into_segments(df,split_seg_len ,fs):
 def extract_features(data_df, channels, fs):
     features = []
 
-    # Define EEG bands
-    eeg_bands = config['eeg_bands']
-
     #linear features
     features = features + [np.mean(np.abs(data_df[ch])) for ch in channels] # absolute mean of each channel
     features = features + [np.var(data_df[ch]) for ch in channels] # variance of each channel
@@ -84,6 +87,9 @@ def extract_features(data_df, channels, fs):
     hjorth_mob = []
     hjorth_comp = []
     band_powers = []
+
+    # Define EEG bands
+    eeg_bands = config['eeg_bands']
 
     for ch in channels:
         fft_vals = np.abs(rfft(data_df[ch].values))
