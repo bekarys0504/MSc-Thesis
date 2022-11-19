@@ -32,12 +32,12 @@ random.seed(config['random_seed'])
 def main():
 
     #all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/pre_19_ch_10s_features.csv', recursive=True)
-    filename = 'pre_3_ch_10s_features.csv'
+    filename = 'pre_19_ch_10s_features.csv'
     all_feature_files = ['./data/processed/Dataset_1/chs_new/'+filename]
 
     X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename)
 
-    feature_selectors = [anova_fs, genetic_algorithm_fs, mrmr_fs]
+    feature_selectors = [anova_fs]
     models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
@@ -59,6 +59,7 @@ def main():
 
                                 if percent == 'all':
                                         print('using all features')
+                                        selected_feature_names = features_df.columns[1:]
                                         X_sel = X
                                 else:
                                         if 'genetic' in str(fs) or 'forward' in str(fs):
@@ -67,39 +68,24 @@ def main():
 
                                 print_cv_results(model, X_sel, y, n_folds)
                                 X_train, X_test, y_train, y_test = train_test_split(X_sel, y, test_size=0.33, random_state=RANDOM_SEED, stratify=y)
+                                
                                 model.fit(X_train, y_train)
                                 y_pred = model.predict(X_test)
                                 print('Test accuracy on Dataset 1:', accuracy_score(y_test, y_pred))
-                                print(selected_feature_names)
 
+                                # test on Dataset 2
                                 X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
-                                print(features_df2.columns)
                                 X_train, X_test, y_train, y_test = train_test_split(X_dataset2, y_dataset2, test_size=0.33, random_state=RANDOM_SEED, stratify=y_dataset2)
+                                
                                 #model.fit(X_train, y_train)
                                 y_pred = model.predict(X_test)
 
                                 print('Test accuracy on Dataset 2:', accuracy_score(y_test, y_pred))
 
 
-
-
-def get_data(filepath):
-    features_df = pd.read_csv(filepath)
-    
-    # drop rows with null values
-    features_df.dropna(inplace=True)
-    #features_df = features_df[features+['depressed']]
-    scaler = MinMaxScaler() 
-    data_scaled = scaler.fit_transform(features_df)
-    data_scaled
-
-    X = data_scaled[:,1:-1] # get all features
-    y = data_scaled[:,-1] # get labels
-
-    return X, y, features_df
-
 def get_data(filepath, selected_feature_names = None):
-    features_df = pd.read_csv(filepath)
+    features_df = pd.read_csv(filepath).iloc[: , 1:]
+
     if selected_feature_names is not None:
         features_df = features_df[selected_feature_names.to_list()+['depressed']]
     # drop rows with null values
@@ -109,7 +95,7 @@ def get_data(filepath, selected_feature_names = None):
     data_scaled = scaler.fit_transform(features_df)
     data_scaled
 
-    X = data_scaled[:,1:-1] # get all features
+    X = data_scaled[:,:-1] # get all features
     y = data_scaled[:,-1] # get labels
 
     return X, y, features_df

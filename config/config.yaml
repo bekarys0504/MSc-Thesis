@@ -63,7 +63,7 @@ channels_2: [ ['Fp1', 'Fp2', 'Fz'], [F7, F8, T3, T4, T5, T6], ['Fp1', 'Fp2', 'F7
 
 epochs: [2, 4, 10, 20]
 
-feature_percentages: [25]
+feature_percentages: [25, 'all']
 
 n_folds: 10
 
