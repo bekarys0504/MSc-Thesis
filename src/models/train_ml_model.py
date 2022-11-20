@@ -12,13 +12,14 @@ from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.feature_selection import SequentialFeatureSelector as seqfs
 from genetic_selection import GeneticSelectionCV
 from mrmr import mrmr_classif
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
 from xgboost import XGBClassifier
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import MinMaxScaler
+import statistics
 
 os.environ['PYTHONHASHSEED'] = '0'
 config = OmegaConf.load('./config/config.yaml')
@@ -32,12 +33,12 @@ random.seed(config['random_seed'])
 def main():
 
     #all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/pre_19_ch_10s_features.csv', recursive=True)
-    filename = 'pre_19_ch_10s_features.csv'
+    filename = 'pre_5_ch_10s_features.csv'
     all_feature_files = ['./data/processed/Dataset_1/chs_new/'+filename]
 
     X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename)
 
-    feature_selectors = [anova_fs]
+    feature_selectors = [anova_fs, genetic_algorithm_fs, mrmr_fs]
     models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
@@ -75,13 +76,27 @@ def main():
 
                                 # test on Dataset 2
                                 X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
-                                X_train, X_test, y_train, y_test = train_test_split(X_dataset2, y_dataset2, test_size=0.33, random_state=RANDOM_SEED, stratify=y_dataset2)
                                 
-                                #model.fit(X_train, y_train)
-                                y_pred = model.predict(X_test)
+                                test_model(model, X_dataset2, y_dataset2)
 
-                                print('Test accuracy on Dataset 2:', accuracy_score(y_test, y_pred))
 
+def test_model(model, X, y):
+    accuracy, precision, recall, f1_score = [], [], [], [] 
+
+    for _ in range(config['n_folds']):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33)
+
+        y_pred = model.predict(X_test)
+        precision_val, recall_val, f1_score_val, _ = precision_recall_fscore_support(y_test, y_pred, average='weighted')
+
+        accuracy.append(accuracy_score(y_test, y_pred)*100)
+        precision.append(precision_val*100)
+        recall.append(recall_val*100)
+        f1_score.append(f1_score_val*100)
+        
+    print(str(model)+" accuracy: %0.2f±%0.2f    precison: %0.2f±%0.2f   recall: %0.2f±%0.2f     f1_score: %0.2f±%0.2f" 
+            % (statistics.mean(accuracy), statistics.stdev(accuracy), statistics.mean(precision), statistics.stdev(precision), 
+            statistics.mean(recall), statistics.stdev(recall), statistics.mean(f1_score), statistics.stdev(f1_score)))
 
 def get_data(filepath, selected_feature_names = None):
     features_df = pd.read_csv(filepath).iloc[: , 1:]
@@ -107,7 +122,7 @@ def anova_fs(features_df, X, y, percentage):
     X_sel = fvalue_Best.fit_transform(X, y)
 
     feature_indices = fvalue_Best.get_support(indices=True)
-    selected_feature_names = features_df.iloc[:,1:-1].columns[feature_indices] 
+    selected_feature_names = features_df.iloc[:,:-1].columns[feature_indices] 
 
     return X_sel, selected_feature_names
 
@@ -117,7 +132,7 @@ def forward_fs(features_df, X, y, model, percentage):
     sfs.fit(X, y)
 
     feature_indices = sfs.get_support(indices=True)
-    selected_feature_names = features_df.iloc[:,1:-1].columns[feature_indices] 
+    selected_feature_names = features_df.iloc[:,:-1].columns[feature_indices] 
     
     X_sel = sfs.transform(X)
     return X_sel, selected_feature_names
@@ -136,7 +151,7 @@ def genetic_algorithm_fs(features_df, X, y, model, percentage):
         caching=True, n_jobs=-1)
 
     models = models.fit(X, y)
-    selected_feature_names = features_df.iloc[:,1:-1].columns[models.support_]
+    selected_feature_names = features_df.iloc[:,:-1].columns[models.support_]
 
     X_sel = X[:,models.support_]
     return X_sel, selected_feature_names
@@ -147,7 +162,7 @@ def mrmr_fs(features_df, X, y, percentage):
     selected_features = mrmr_classif(pd.DataFrame(X), pd.Series(y), K = num_features, show_progress=False)
     X_sel = X[:, selected_features]
     
-    selected_feature_names = features_df.iloc[:,1:-1].columns[selected_features]
+    selected_feature_names = features_df.iloc[:,:-1].columns[selected_features]
 
     return X_sel, selected_feature_names
 
