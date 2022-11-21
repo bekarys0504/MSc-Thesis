@@ -33,12 +33,12 @@ random.seed(config['random_seed'])
 def main():
 
     #all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/pre_19_ch_10s_features.csv', recursive=True)
-    filename = 'pre_5_ch_10s_features.csv'
+    filename = 'pre_3_ch_10s_features.csv'
     all_feature_files = ['./data/processed/Dataset_1/chs_new/'+filename]
 
     X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename)
 
-    feature_selectors = [anova_fs, genetic_algorithm_fs, mrmr_fs]
+    feature_selectors = [anova_fs]
     models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
@@ -73,7 +73,7 @@ def main():
                                 model.fit(X_train, y_train)
                                 y_pred = model.predict(X_test)
                                 print('Test accuracy on Dataset 1:', accuracy_score(y_test, y_pred))
-
+                                print(selected_feature_names)
                                 # test on Dataset 2
                                 X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
                                 

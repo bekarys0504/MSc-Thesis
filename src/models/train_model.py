@@ -30,13 +30,6 @@ random.seed(config['random_seed'])
 @click.command()
 
 def main():
-    '''
-    data_path = r'.\data\processed\deep_learning_data\1s_ec/'
-    X_train, Y_train = get_data(data_path+'train/')
-    X_val, Y_val = get_data(data_path+'val/')
-    X_test, Y_test = get_data(data_path+'test/')
-
-    ''' 
 
     path = r'.\data\processed\deep_learning_data\19_ch_data\Depressed/'
     X = []
