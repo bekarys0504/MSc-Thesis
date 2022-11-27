@@ -30,7 +30,7 @@ def main(input_filepath, output_filepath):
     all_files = glob.glob(input_filepath+'/dataset_1_cheb2/*.csv', recursive=True)
     all_files = [x for x in all_files if 'post' not in x] # get only pre data
 
-    SEGMENT_LENS = config['epochs'][3:4]
+    SEGMENT_LENS = config['epochs'][2:3]
     CHANNELS = config['channels'][3:]
     fs = config['freq_sampling']
 
@@ -58,12 +58,13 @@ def main(input_filepath, output_filepath):
                 for i, segment in enumerate(segments.values()):
                     features = extract_features(segment, channels, fs, config)
                     subject_features_df.loc[len(subject_features_df)] = features+subject_class
-            
+
                 # minmax scaling if dataset not empty
                 subject_features_df.dropna(inplace=True)
                 if len(subject_features_df) > 0:
-                    subject_features_df[subject_features_df.columns] = MinMaxScaler().fit_transform(subject_features_df)
-
+                    subject_features_df.iloc[:,:-1] = MinMaxScaler().fit_transform(subject_features_df.iloc[:,:-1])
+                print(file)
+                print(subject_features_df['depressed'])
                 features_df = features_df.append(subject_features_df)
 
             print('Saving pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))

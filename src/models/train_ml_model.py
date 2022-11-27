@@ -37,7 +37,7 @@ def main():
     filename = 'pre_19_ch_10s_features.csv'
     all_feature_files = ['./data/processed/Dataset_1/cheb_2/'+filename]
 
-    feature_selectors = [anova_fs]
+    feature_selectors = [genetic_algorithm_fs]
     models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
@@ -128,12 +128,18 @@ def get_data(filepath, selected_feature_names = None):
         features_df = features_df[selected_feature_names.to_list()+['depressed']]
     # drop rows with null values
     features_df.dropna(inplace=True)
-    #features_df = features_df[features+['depressed']]
+
     scaler = MinMaxScaler() 
     data_scaled = scaler.fit_transform(features_df)
-
+    
+    # save scaler
+    pickle.dump(scaler, open(r'./models/ml_models/scaler.pkl', 'wb'))
+    print('Saving scaler')
+    #X = features_df.iloc[:,:-1].values.astype(np.double) # get all features
+    #y = features_df.iloc[:,-1].values.astype(np.double) # get labels
     X = data_scaled[:,:-1] # get all features
     y = data_scaled[:,-1] # get labels
+
 
     return X, y, features_df
 
@@ -173,8 +179,8 @@ def genetic_algorithm_fs(features_df, X, y, model, percentage):
         caching=True, n_jobs=-1)
 
     models = models.fit(X, y)
-    selected_feature_names = features_df.iloc[:,:-1].columns[models.support_]
 
+    selected_feature_names = features_df.iloc[:,:-1].columns[models.support_]
     X_sel = X[:,models.support_]
     return X_sel, selected_feature_names
 
