@@ -12,6 +12,7 @@ from omegaconf import OmegaConf
 from scipy import stats
 from scipy.fft import fft, fftfreq, rfft, rfftfreq
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler
 
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
@@ -26,23 +27,24 @@ def main(input_filepath, output_filepath):
     logger.info('Building features')
 
     
-    all_files = glob.glob(input_filepath+'/Dataset_2/*.csv', recursive=True)
+    all_files = glob.glob(input_filepath+'/dataset_1_cheb2/*.csv', recursive=True)
     all_files = [x for x in all_files if 'post' not in x] # get only pre data
 
-    SEGMENT_LENS = config['epochs']
-    CHANNELS = config['channels_2']
-    fs = config['freq_sampling_2']
+    SEGMENT_LENS = config['epochs'][3:4]
+    CHANNELS = config['channels'][3:]
+    fs = config['freq_sampling']
 
     for channels in CHANNELS:
         for segment_len in SEGMENT_LENS:
             
             # create dataframe to store all features
-            column_names = get_columns(channels)
+            column_names = get_columns(channels, config)
             features_df = pd.DataFrame(columns=column_names)
             
             for file in all_files:
+                subject_features_df = pd.DataFrame(columns=column_names)
                 data = pd.read_csv(file)
-                print(file)
+
                 if 'PC1' in channels:
                     pca = PCA(n_components=len(channels))
                     pca.fit(data[config['ch_names_2']])
@@ -54,12 +56,18 @@ def main(input_filepath, output_filepath):
                 segments = split_into_segments(data, segment_len, fs)
 
                 for i, segment in enumerate(segments.values()):
-                    features = extract_features(segment, channels, fs)
-                    features_df.loc[len(features_df)] = features+subject_class
-                
-            print('Saving pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
+                    features = extract_features(segment, channels, fs, config)
+                    subject_features_df.loc[len(subject_features_df)] = features+subject_class
+            
+                # minmax scaling if dataset not empty
+                subject_features_df.dropna(inplace=True)
+                if len(subject_features_df) > 0:
+                    subject_features_df[subject_features_df.columns] = MinMaxScaler().fit_transform(subject_features_df)
 
-            features_df.to_csv(output_filepath+'/Dataset_2/pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
+                features_df = features_df.append(subject_features_df)
+
+            print('Saving pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
+            features_df.to_csv(output_filepath+'/Dataset_1/correctly_scaled/pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
 
 # function to split data into segments
 def split_into_segments(df,split_seg_len ,fs):
@@ -73,7 +81,7 @@ def split_into_segments(df,split_seg_len ,fs):
     
     return d
 
-def extract_features(data_df, channels, fs):
+def extract_features(data_df, channels, fs, config):
     features = []
 
     #linear features
@@ -115,7 +123,7 @@ def extract_features(data_df, channels, fs):
 
     return features
 
-def get_columns(ch_names):
+def get_columns(ch_names, config):
     eeg_bands = config['eeg_bands']
 
     mean_names = ["Mean-" + chan for chan in ch_names]

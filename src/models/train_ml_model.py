@@ -20,6 +20,7 @@ from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import MinMaxScaler
 import statistics
+import pickle
 
 os.environ['PYTHONHASHSEED'] = '0'
 config = OmegaConf.load('./config/config.yaml')
@@ -33,10 +34,8 @@ random.seed(config['random_seed'])
 def main():
 
     #all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/pre_19_ch_10s_features.csv', recursive=True)
-    filename = 'pre_3_ch_10s_features.csv'
-    all_feature_files = ['./data/processed/Dataset_1/chs_new/'+filename]
-
-    X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename)
+    filename = 'pre_19_ch_10s_features.csv'
+    all_feature_files = ['./data/processed/Dataset_1/cheb_2/'+filename]
 
     feature_selectors = [anova_fs]
     models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
@@ -45,7 +44,6 @@ def main():
     RANDOM_SEED = config['random_seed']
 
     for file in all_feature_files:
-        
         X, y, features_df = get_data(file)
 
         for percent in percentages:
@@ -71,14 +69,39 @@ def main():
                                 X_train, X_test, y_train, y_test = train_test_split(X_sel, y, test_size=0.33, random_state=RANDOM_SEED, stratify=y)
                                 
                                 model.fit(X_train, y_train)
+                                
+                                # save
+                                save_model(model)
+
                                 y_pred = model.predict(X_test)
                                 print('Test accuracy on Dataset 1:', accuracy_score(y_test, y_pred))
-                                print(selected_feature_names)
                                 # test on Dataset 2
-                                X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
+                                #X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
                                 
-                                test_model(model, X_dataset2, y_dataset2)
+                                #test_model(model, X_dataset2, y_dataset2)
 
+
+def save_model(model):
+
+    # save KNN model
+    if 'kneighbors' in str(model).lower():
+        with open(r'./models/ml_models/'+'KNN.pkl','wb') as f:
+            pickle.dump(model,f)
+
+    # save svm model
+    if 'svc' in str(model).lower():
+        with open(r'./models/ml_models/'+'SVM.pkl','wb') as f:
+            pickle.dump(model,f)
+
+    # save RF model
+    if 'randomforest' in str(model).lower():
+        with open(r'./models/ml_models/'+'RF.pkl','wb') as f:
+            pickle.dump(model,f)
+
+    # save XGBoost model
+    if 'xgbclassifier' in str(model).lower():
+        with open(r'./models/ml_models/'+'XGBoost.pkl','wb') as f:
+            pickle.dump(model,f)
 
 def test_model(model, X, y):
     accuracy, precision, recall, f1_score = [], [], [], [] 
@@ -108,7 +131,6 @@ def get_data(filepath, selected_feature_names = None):
     #features_df = features_df[features+['depressed']]
     scaler = MinMaxScaler() 
     data_scaled = scaler.fit_transform(features_df)
-    data_scaled
 
     X = data_scaled[:,:-1] # get all features
     y = data_scaled[:,-1] # get labels

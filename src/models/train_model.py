@@ -18,20 +18,22 @@ from tensorflow.keras import regularizers
 from wandb.keras import WandbCallback
 import pickle
 
-os.environ['PYTHONHASHSEED'] = '0'
+
 wandb.init(project="DeepEEG", entity="bekarys")
 config = OmegaConf.load('./config/config.yaml')
 
-# set randomm seed for reproducability
+# set random seeds for reproducability
 tf.random.set_seed(config['random_seed'])
 np.random.seed(config['random_seed'])
 random.seed(config['random_seed'])
+os.environ['PYTHONHASHSEED'] = '0'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 @click.command()
 
 def main():
 
-    path = r'.\data\processed\deep_learning_data\19_ch_data\Depressed/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data/Depressed/'
     X = []
     labels = []
     for i in os.listdir(path):
@@ -39,7 +41,7 @@ def main():
         X.append(data)
         labels.append(1)
 
-    path = r'.\data\processed\deep_learning_data\19_ch_data\Healthy/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data/Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
@@ -190,19 +192,19 @@ def get_callback():
 def get_model(input_shape=(500,31,1), dropout_rate=0.25, output_bias=0):
 
     model=models.Sequential()
-    model.add(layers.Conv2D(1,(5,3), input_shape=input_shape, padding="same"))
+    model.add(layers.Conv2D(3,(11,7), input_shape=input_shape, padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(2,(5,3), padding="same"))
+    model.add(layers.Conv2D(5,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(2,(5,3), padding="same"))
+    model.add(layers.Conv2D(5,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2, 1)))
@@ -225,7 +227,7 @@ def get_model(input_shape=(500,31,1), dropout_rate=0.25, output_bias=0):
     #model.add(layers.Dense(1024))
     #model.add(LeakyReLU(alpha=0.1))
     #model.add(layers.Dropout(rate=dropout_rate))
-    model.add(layers.Dense(100))
+    model.add(layers.Dense(256))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.Dropout(rate=dropout_rate))
     model.add(layers.Dense(2, activation='softmax', bias_initializer=tf.keras.initializers.Constant(output_bias)))
