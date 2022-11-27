@@ -55,22 +55,25 @@ noisy_recs: [
     "S47_pre_EO1_EEG", "S52_Pre_EC"
 ]
 
-channels: [ ['PC1', 'PC2', 'PC3', 'PC4', 'PC5'], ['Fp1', 'Fp2', 'Fpz'], [FT7, FT8, T6, T5, TP7, TP8], ['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
+channels: [['PC1', 'PC2', 'PC3', 'PC4', 'PC5'], ['Fp1', 'Fp2', 'Fpz'], [FT7, FT8, T6, T5, TP7, TP8], ['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6',
 'P3', 'P4', 'FT7', 'FT8', 'O1', 'O2', 'C3', 'C4']]
 
 # fully compatible channels
 channels_2: [ ['Fp1', 'Fp2', 'Fz'], [F7, F8, T3, T4, T5, T6], ['Fp1', 'Fp2', 'F7', 'F3', 'Fz',  'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4',  'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2'], ['PC1', 'PC2', 'PC3', 'PC4', 'PC5']]
 
+# 19 channels for deployment
+predict_19_ch: ['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 'T6', 'P3', 'P4', 'FT7', 'FT8', 'O1', 'O2', 'C3', 'C4']
+
 epochs: [2, 4, 10, 20]
 
-feature_percentages: [90, 'all']
+feature_percentages: ['all']
 
 n_folds: 10
 
 deep_learning_hp:
   lr: 0.0005
   batch_size: 4
-  epochs: 200
-  dropout_rate: 0.3
+  epochs: 2
+  dropout_rate: 0.5
   chs: ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4', 'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']
   chs_2: ['Fp1', 'Fp2', 'F7', 'F3', 'Fz',  'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4',  'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']

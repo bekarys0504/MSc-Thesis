@@ -18,20 +18,22 @@ from tensorflow.keras import regularizers
 from wandb.keras import WandbCallback
 import pickle
 
-os.environ['PYTHONHASHSEED'] = '0'
+
 wandb.init(project="DeepEEG", entity="bekarys")
 config = OmegaConf.load('./config/config.yaml')
 
-# set randomm seed for reproducability
+# set random seeds for reproducability
 tf.random.set_seed(config['random_seed'])
 np.random.seed(config['random_seed'])
 random.seed(config['random_seed'])
+os.environ['PYTHONHASHSEED'] = '0'
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 @click.command()
 
 def main():
 
-    path = r'.\data\processed\deep_learning_data\no_overlap_data/Depressed/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data/Depressed/'
     X = []
     labels = []
     for i in os.listdir(path):
@@ -39,7 +41,7 @@ def main():
         X.append(data)
         labels.append(1)
 
-    path = r'.\data\processed\deep_learning_data\no_overlap_data/Healthy/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data/Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
