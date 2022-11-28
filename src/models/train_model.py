@@ -33,7 +33,7 @@ os.environ['PYTHONHASHSEED'] = '0'
 
 def main():
 
-    path = r'.\data\processed\deep_learning_data\19_ch_data/Depressed/'
+    path = r'.\data\processed\deep_learning_data\no_overlap_data/Depressed/'
     X = []
     labels = []
     for i in os.listdir(path):
@@ -41,7 +41,7 @@ def main():
         X.append(data)
         labels.append(1)
 
-    path = r'.\data\processed\deep_learning_data\19_ch_data/Healthy/'
+    path = r'.\data\processed\deep_learning_data\no_overlap_data/Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)

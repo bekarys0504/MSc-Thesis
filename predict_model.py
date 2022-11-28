@@ -11,7 +11,7 @@ from tensorflow import keras
 
 config = OmegaConf.load('./config/config.yaml')
 ml_model_path = r'./models/ml_models/'
-cnn_model_path = r'.../models/weights/exp31/'
+cnn_model_path = r'./models/weights/exp37/'
 # Declaring our FastAPI instance
 app = FastAPI()
 
@@ -20,19 +20,21 @@ def upload_file(file: UploadFile = File(...)):
     df = pd.read_csv(file.file)
     file.file.close()
     segment_len = 10
+    cnn_segment_len = 1
     classes = {0: 'Healthy', 1: 'Depressed'}
 
     X, y, features_df = get_data(df, file.filename, segment_len, ml_model_path)
+    X_cnn, y_cnn = get_cnn_data(file.filename, df, cnn_segment_len)
     
     KNN_pred, SVM_pred, RF_pred, XGBoost_pred = predict_ml(X, ml_model_path)
-    #CNN_pred = predict_cnn(X, cnn_model_path)
+    CNN_pred = predict_cnn(X_cnn, cnn_model_path)
 
     return {"filename": file.filename, 
             'KNN prediction': classes[KNN_pred], 
             'SVM prediction': classes[SVM_pred], 
             'RF prediction': classes[RF_pred], 
             'XGBoost prediction': classes[XGBoost_pred], 
-            'CNN prediction': classes[XGBoost_pred]}
+            'CNN prediction': classes[CNN_pred]}
 
 
 def get_data(data_df, filename, segment_len, ml_model_path):
@@ -58,7 +60,8 @@ def get_data(data_df, filename, segment_len, ml_model_path):
     return X, y, features_df
 
 def get_cnn_data(filename, s_data, epoch_length):
-    X = np.array([])
+    s_data = s_data[config['ch_names']] # select channels
+    X = []
     y = []
     start = 0
     end = epoch_length*500
@@ -71,7 +74,7 @@ def get_cnn_data(filename, s_data, epoch_length):
 
             if 0 not in s_epoch.std().values:
                 s_epoch = (s_epoch-s_epoch.mean())/s_epoch.std()
-                X = np.append(X, s_epoch.values.astype(np.double))
+                X.append(s_epoch.values.astype(np.double))
                 y.append(1)
 
         elif 'healthy' in filename.lower():
@@ -80,13 +83,15 @@ def get_cnn_data(filename, s_data, epoch_length):
 
             if 0 not in s_epoch.std().values:
                 s_epoch = (s_epoch-s_epoch.mean())/s_epoch.std()
-                X = np.append(X, s_epoch.values.astype(np.double))
+                X.append(s_epoch.values.astype(np.double))
                 y.append(0)
 
             
         count += 1
         start = start+step
         end = end+step
+    
+    return np.array(X), y
 
 def predict_ml(X, ml_model_path):
 
@@ -108,9 +113,10 @@ def predict_ml(X, ml_model_path):
 def predict_cnn(X, cnn_model_path):
     # predict with CNN model
     # load model
+    
     model = keras.models.load_model(cnn_model_path+'best.hdf5')
     test_predictions = model.predict(x = X)
     predictions = np.argmax(test_predictions, axis=1)
-    return predictions
+    return np.argmax(np.bincount(predictions.astype(int)))
     
 
