@@ -66,7 +66,7 @@ predict_19_ch: ['Fp1', 'Fp2', 'F3','F4', 'F7', 'F8', 'Fpz', 'TP7', 'TP8', 'T5', 
 
 epochs: [2, 4, 10, 20]
 
-feature_percentages: ['all']
+feature_percentages: [25, 50, 75, 90, 'all']
 
 n_folds: 10
 

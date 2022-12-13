@@ -33,11 +33,11 @@ random.seed(config['random_seed'])
 
 def main():
 
-    #all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/pre_19_ch_10s_features.csv', recursive=True)
-    filename = 'pre_19_ch_10s_features.csv'
-    all_feature_files = ['./data/processed/Dataset_1/cheb_2/'+filename]
+    filename = 'pre_5_ch_10s_features.csv'
+    all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/'+filename, recursive=True)
+    #all_feature_files = ['./data/processed/Dataset_1/cheb_2/'+filename]
 
-    feature_selectors = [genetic_algorithm_fs]
+    feature_selectors = [anova_fs]
     models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
@@ -71,14 +71,16 @@ def main():
                                 model.fit(X_train, y_train)
                                 
                                 # save
-                                save_model(model)
+                                #save_model(model)
 
                                 y_pred = model.predict(X_test)
                                 print('Test accuracy on Dataset 1:', accuracy_score(y_test, y_pred))
                                 # test on Dataset 2
-                                #X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
+                                X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
+                                y_pred2 = model.predict(X_dataset2)
+                                print('Test accuracy on Dataset 2:', accuracy_score(y_dataset2, y_pred2))
                                 
-                                #test_model(model, X_dataset2, y_dataset2)
+                                test_model(model, X_dataset2, y_dataset2)
 
 
 def save_model(model):

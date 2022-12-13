@@ -223,6 +223,7 @@ def get_model(input_shape=(500,31,1), dropout_rate=0.25, output_bias=0):
     model.add(layers.AveragePooling2D((2,1)))
     model.add(layers.Dropout(rate=dropout_rate))
     '''
+    
     model.add(layers.Flatten())
     #model.add(layers.Dense(1024))
     #model.add(LeakyReLU(alpha=0.1))
