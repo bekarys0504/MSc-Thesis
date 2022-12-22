@@ -33,11 +33,11 @@ random.seed(config['random_seed'])
 
 def main():
 
-    filename = 'pre_5_ch_10s_features.csv'
-    all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/'+filename, recursive=True)
+    filename = 'pre_31_ch_10s_features.csv'
+    all_feature_files = glob.glob('./data/processed/Dataset_1/cheb_2/'+filename, recursive=True)
     #all_feature_files = ['./data/processed/Dataset_1/cheb_2/'+filename]
 
-    feature_selectors = [anova_fs]
+    feature_selectors = [anova_fs, genetic_algorithm_fs, mrmr_fs]
     models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
@@ -76,11 +76,13 @@ def main():
                                 y_pred = model.predict(X_test)
                                 print('Test accuracy on Dataset 1:', accuracy_score(y_test, y_pred))
                                 # test on Dataset 2
+                                '''
                                 X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
                                 y_pred2 = model.predict(X_dataset2)
                                 print('Test accuracy on Dataset 2:', accuracy_score(y_dataset2, y_pred2))
                                 
                                 test_model(model, X_dataset2, y_dataset2)
+                                '''
 
 
 def save_model(model):
@@ -125,6 +127,9 @@ def test_model(model, X, y):
 
 def get_data(filepath, selected_feature_names = None):
     features_df = pd.read_csv(filepath).iloc[: , 1:]
+    
+    # replace columns for compatibility
+    #features_df.columns = features_df.columns.str.replace('Fpz', 'Fz')
 
     if selected_feature_names is not None:
         features_df = features_df[selected_feature_names.to_list()+['depressed']]
@@ -135,10 +140,9 @@ def get_data(filepath, selected_feature_names = None):
     data_scaled = scaler.fit_transform(features_df)
     
     # save scaler
-    pickle.dump(scaler, open(r'./models/ml_models/scaler.pkl', 'wb'))
-    print('Saving scaler')
-    #X = features_df.iloc[:,:-1].values.astype(np.double) # get all features
-    #y = features_df.iloc[:,-1].values.astype(np.double) # get labels
+    #pickle.dump(scaler, open(r'./models/ml_models/scaler.pkl', 'wb'))
+    #print('Saving scaler')
+    
     X = data_scaled[:,:-1] # get all features
     y = data_scaled[:,-1] # get labels
 
