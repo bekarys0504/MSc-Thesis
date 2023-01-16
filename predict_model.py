@@ -8,6 +8,11 @@ from src.features.build_features import get_columns, split_into_segments, extrac
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from tensorflow import keras
+import sys
+import math
+sys.path.insert(1, './src/models')
+from CustomEnsembleModel import CustomEnsembleModel
+import time
 
 config = OmegaConf.load('./config/config.yaml')
 ml_model_path = r'./models/ml_models/'
@@ -22,19 +27,27 @@ def upload_file(file: UploadFile = File(...)):
     segment_len = 10
     cnn_segment_len = 1
     classes = {0: 'Healthy', 1: 'Depressed'}
-
+    st = time.time()
     X, y, features_df = get_data(df, file.filename, segment_len, ml_model_path)
-    X_cnn, y_cnn = get_cnn_data(file.filename, df, cnn_segment_len)
+    predictions, confidences = predict_ml(X, ml_model_path)
+    et = time.time()
+    elapsed_time = et - st
+    print('ML models execution time:', elapsed_time, 'seconds')
     
-    KNN_pred, SVM_pred, RF_pred, XGBoost_pred = predict_ml(X, ml_model_path)
-    CNN_pred = predict_cnn(X_cnn, cnn_model_path)
+    st = time.time()
+    X_cnn, y_cnn = get_cnn_data(file.filename, df, cnn_segment_len)
+    CNN_pred, CNN_confidence = predict_cnn(X_cnn, cnn_model_path)
+    et = time.time()
+    elapsed_time = et - st
+    print('CNN execution time:', elapsed_time, 'seconds')
 
     return {"filename": file.filename, 
-            'KNN prediction': classes[KNN_pred], 
-            'SVM prediction': classes[SVM_pred], 
-            'RF prediction': classes[RF_pred], 
-            'XGBoost prediction': classes[XGBoost_pred], 
-            'CNN prediction': classes[CNN_pred]}
+            'KNN prediction': str(classes[predictions[0][0]])+str(' (')+str(confidences[0])+str('%)'),
+            'SVM prediction': str(classes[predictions[1][0]])+str(' (')+str(confidences[1])+str('%)'),
+            'RF prediction': str(classes[predictions[2][0]])+str(' (')+str(confidences[2])+str('%)'),
+            'XGBoost prediction': str(classes[predictions[3][0]])+str(' (')+str(confidences[3])+str('%)'),
+            'Ensemble prediction': str(classes[predictions[4][0]])+str(' (')+str(confidences[4])+str('%)'),
+            'CNN prediction': str(classes[CNN_pred])+str(' (')+str(CNN_confidence)+str('%)')}
 
 
 def get_data(data_df, filename, segment_len, ml_model_path):
@@ -96,19 +109,22 @@ def get_cnn_data(filename, s_data, epoch_length):
 def predict_ml(X, ml_model_path):
 
     # predict with ml models
-    models = ['KNN.pkl', 'SVM.pkl', 'RF.pkl', 'XGBoost.pkl']
+    models = ['KNN.pkl', 'SVM.pkl', 'RF.pkl', 'XGBoost.pkl', 'CustomEnsembleModel.pkl']
     predictions = []
+    confidences = []
 
     for ml_model in models:
         # load models and do prediction
         with open(ml_model_path+ml_model, 'rb') as f:
             model = pickle.load(f)
         y_pred = model.predict(X)
-
-        most_frequent_class = np.argmax(np.bincount(y_pred.astype(int)))
-        predictions.append(most_frequent_class)
-    
-    return predictions
+        y_pred_proba = model.predict_proba(X)
+        predicted_class, model_confidence = combine_using_Dempster_Schafer(np.expand_dims(y_pred_proba[:,1], axis=0))
+        
+        #most_frequent_class = np.argmax(np.bincount(y_pred.astype(int)))
+        predictions.append(predicted_class)
+        confidences.append(model_confidence)
+    return predictions, confidences
 
 def predict_cnn(X, cnn_model_path):
     # predict with CNN model
@@ -116,7 +132,22 @@ def predict_cnn(X, cnn_model_path):
     
     model = keras.models.load_model(cnn_model_path+'best.hdf5')
     test_predictions = model.predict(x = X)
+    confidence = np.max(np.mean(test_predictions, axis=0))*100
     predictions = np.argmax(test_predictions, axis=1)
-    return np.argmax(np.bincount(predictions.astype(int)))
+    return np.argmax(np.bincount(predictions.astype(int))), confidence
     
+def combine_using_Dempster_Schafer(p_individual):
+    bpa0 = 1.0 - np.prod(p_individual, axis=1)
+    bpa1 = 1 - np.prod(1 - p_individual, axis=1)
+    belief = np.vstack([bpa0 / (1 - bpa0), bpa1 / (1 - bpa1)]).T #B
 
+    if np.any(np.isinf(belief)):
+        confidence = 1.0
+    else:
+        normalized_belief = belief/belief.sum(axis=1,keepdims=1)
+        confidence = np.max(normalized_belief)
+
+    #print(belief/belief.sum(axis=0,keepdims=1))
+    y_final = np.argmax(belief, axis=1) #C
+
+    return y_final, confidence*100

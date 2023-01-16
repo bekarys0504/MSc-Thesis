@@ -21,6 +21,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import MinMaxScaler
 import statistics
 import pickle
+from CustomEnsembleModel import CustomEnsembleModel
 
 os.environ['PYTHONHASHSEED'] = '0'
 config = OmegaConf.load('./config/config.yaml')
@@ -33,12 +34,13 @@ random.seed(config['random_seed'])
 
 def main():
 
-    filename = 'pre_31_ch_10s_features.csv'
-    all_feature_files = glob.glob('./data/processed/Dataset_1/cheb_2/'+filename, recursive=True)
+    filename = 'pre_5_ch_10s_features.csv'
+    all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/'+filename, recursive=True)
     #all_feature_files = ['./data/processed/Dataset_1/cheb_2/'+filename]
 
-    feature_selectors = [anova_fs, genetic_algorithm_fs, mrmr_fs]
-    models = [KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly'), RandomForestClassifier(), XGBClassifier()]
+    feature_selectors = [anova_fs]
+    models = [CustomEnsembleModel([KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly', probability=True), RandomForestClassifier(), XGBClassifier()]),]
+            #KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly', probability=True), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
     RANDOM_SEED = config['random_seed']
@@ -66,45 +68,49 @@ def main():
                                                 print('Number of features for genetic or forward '+str(X_sel.shape[1])+' out of '+str(X.shape[1]))
 
                                 print_cv_results(model, X_sel, y, n_folds)
+                                
                                 X_train, X_test, y_train, y_test = train_test_split(X_sel, y, test_size=0.33, random_state=RANDOM_SEED, stratify=y)
-                                
                                 model.fit(X_train, y_train)
-                                
                                 # save
                                 #save_model(model)
-
+                                
+                                
                                 y_pred = model.predict(X_test)
                                 print('Test accuracy on Dataset 1:', accuracy_score(y_test, y_pred))
                                 # test on Dataset 2
-                                '''
                                 X_dataset2, y_dataset2, features_df2 = get_data('./data/processed/Dataset_2/'+filename, selected_feature_names)
                                 y_pred2 = model.predict(X_dataset2)
                                 print('Test accuracy on Dataset 2:', accuracy_score(y_dataset2, y_pred2))
                                 
                                 test_model(model, X_dataset2, y_dataset2)
-                                '''
+                                
 
 
 def save_model(model):
 
     # save KNN model
-    if 'kneighbors' in str(model).lower():
+    if 'kneighbors' in str(model).lower() and 'ensemble' not in str(model).lower():
         with open(r'./models/ml_models/'+'KNN.pkl','wb') as f:
             pickle.dump(model,f)
 
     # save svm model
-    if 'svc' in str(model).lower():
+    if 'svc' in str(model).lower() and 'ensemble' not in str(model).lower():
         with open(r'./models/ml_models/'+'SVM.pkl','wb') as f:
             pickle.dump(model,f)
 
     # save RF model
-    if 'randomforest' in str(model).lower():
+    if 'randomforest' in str(model).lower() and 'ensemble' not in str(model).lower():
         with open(r'./models/ml_models/'+'RF.pkl','wb') as f:
             pickle.dump(model,f)
 
     # save XGBoost model
-    if 'xgbclassifier' in str(model).lower():
+    if 'xgbclassifier' in str(model).lower() and 'ensemble' not in str(model).lower():
         with open(r'./models/ml_models/'+'XGBoost.pkl','wb') as f:
+            pickle.dump(model,f)
+
+    # save ensemble model
+    if 'ensemble' in str(model).lower():
+        with open(r'./models/ml_models/'+'CustomEnsembleModel.pkl','wb') as f:
             pickle.dump(model,f)
 
 def test_model(model, X, y):
@@ -140,7 +146,7 @@ def get_data(filepath, selected_feature_names = None):
     data_scaled = scaler.fit_transform(features_df)
     
     # save scaler
-    #pickle.dump(scaler, open(r'./models/ml_models/scaler.pkl', 'wb'))
+    #pickle.dump(scaler, open(r'./models/ml_models/scaler1.pkl', 'wb'))
     #print('Saving scaler')
     
     X = data_scaled[:,:-1] # get all features
@@ -209,7 +215,29 @@ def print_cv_results(model, X, y, n_folds):
     
     print(str(model)+" accuracy: %0.2f±%0.2f    precison: %0.2f±%0.2f   recall: %0.2f±%0.2f     f1_score: %0.2f±%0.2f" 
             % (accuracy.mean(), accuracy.std(), precision.mean(), precision.std(), recall.mean(), recall.std(), f1_score.mean(), f1_score.std()))
-
+'''
+def print_cv_results(model, X, y, n_folds):
+    # Create StratifiedKFold object.
+    skf = StratifiedKFold(n_splits=n_folds, shuffle=True)
+    lst_acc = []
+    lst_precision = []
+    lst_recall = []
+    lst_f1score = []
+    
+    for train_index, test_index in skf.split(X, y):
+        x_train_fold, x_test_fold = X[train_index], X[test_index]
+        y_train_fold, y_test_fold = y[train_index], y[test_index]
+        model.fit(x_train_fold, y_train_fold)
+        y_test_pred = model.predict(x_test_fold)
+        precision, recall, fscore, _ = precision_recall_fscore_support(y_test_fold, y_test_pred, average='macro')
+        lst_acc.append(model.score(x_test_fold, y_test_fold)*100)
+        lst_precision.append(precision*100)
+        lst_recall.append(recall*100)
+        lst_f1score.append(fscore*100)    
+        
+    print(str(model)+" accuracy: %0.2f±%0.2f    precison: %0.2f±%0.2f   recall: %0.2f±%0.2f     f1_score: %0.2f±%0.2f" 
+        % (np.mean(lst_acc), np.std(lst_acc), np.mean(lst_precision), np.std(lst_precision), np.mean(lst_recall), np.std(lst_recall), np.mean(lst_f1score), np.std(lst_f1score)))
+'''
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.INFO, format=log_fmt)
