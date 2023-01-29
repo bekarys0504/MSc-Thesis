@@ -34,20 +34,21 @@ random.seed(config['random_seed'])
 
 def main():
 
-    filename = 'pre_5_ch_10s_features.csv'
+    filename = 'pre_19_ch_10s_features.csv'
     all_feature_files = glob.glob('./data/processed/Dataset_1/chs_new/'+filename, recursive=True)
     #all_feature_files = ['./data/processed/Dataset_1/cheb_2/'+filename]
-
+    
+    print(all_feature_files)
+    
     feature_selectors = [anova_fs]
-    models = [CustomEnsembleModel([KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly', probability=True), RandomForestClassifier(), XGBClassifier()]),]
-            #KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly', probability=True), RandomForestClassifier(), XGBClassifier()]
+    models = [#CustomEnsembleModel([KNeighborsClassifier(n_neighbors=2), svm.SVC(kernel='poly', probability=True), RandomForestClassifier(), XGBClassifier()]),]
+            KNeighborsClassifier(n_neighbors=7)]#, svm.SVC(kernel='poly', probability=True), RandomForestClassifier(), XGBClassifier()]
     percentages = config['feature_percentages']
     n_folds = config['n_folds']
     RANDOM_SEED = config['random_seed']
 
     for file in all_feature_files:
         X, y, features_df = get_data(file)
-
         for percent in percentages:
                 for fs in feature_selectors:
                         print('filename: '+file+' FS: ' + str(fs)[10:-22] + 'percentage: ' + str(percent))
