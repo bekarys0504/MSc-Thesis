@@ -23,7 +23,7 @@ import os
 from scipy import stats, signal
 
 mne.set_log_level(False)
-# I had error as in this link https://github.com/open-mmlab/mmdetection/issues/7035
+# to fix error as in this link https://github.com/open-mmlab/mmdetection/issues/7035
 
 #matplotlib.use('Agg')
 matplotlib.use('Qt5Agg')

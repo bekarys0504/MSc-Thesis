@@ -29,9 +29,11 @@ def main(input_filepath, output_filepath):
     
     all_files = glob.glob(input_filepath+'/dataset_1_cheb2/*.csv', recursive=True)
     all_files = [x for x in all_files if 'post' not in x] # get only pre data
+    all_files = all_files[:int(0.8*len(all_files))]
+    all_files_test = all_files[int(0.8*len(all_files)):]
 
     SEGMENT_LENS = config['epochs'][2:3]
-    CHANNELS = config['channels'][4:]
+    CHANNELS = config['channels'][1:2]
     fs = config['freq_sampling']
 
     for channels in CHANNELS:
@@ -41,7 +43,7 @@ def main(input_filepath, output_filepath):
             column_names = get_columns(channels, config)
             features_df = pd.DataFrame(columns=column_names)
             
-            for file in all_files:
+            for file in all_files_test:
                 subject_features_df = pd.DataFrame(columns=column_names)
                 data = pd.read_csv(file)
 
@@ -62,7 +64,7 @@ def main(input_filepath, output_filepath):
                 features_df = features_df.append(subject_features_df)
 
             print('Saving pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
-            features_df.to_csv(output_filepath+'/Dataset_1/cheb_2/pre_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
+            features_df.to_csv(output_filepath+'/Dataset_1/cheb_2/pre_test_{}_ch_{}s_features.csv'.format(len(channels), segment_len))
 
 # function to split data into segments
 def split_into_segments(df,split_seg_len ,fs):

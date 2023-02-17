@@ -132,7 +132,7 @@ def predict_cnn(X, cnn_model_path):
     
     model = keras.models.load_model(cnn_model_path+'best.hdf5')
     test_predictions = model.predict(x = X)
-    confidence = np.max(np.mean(test_predictions, axis=0))*100
+    confidence = np.max(np.mean(test_predictions, axis=0))*100 # calculate confidence by taking an average of columns
     predictions = np.argmax(test_predictions, axis=1)
     return np.argmax(np.bincount(predictions.astype(int))), confidence
     
