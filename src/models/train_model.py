@@ -33,7 +33,7 @@ os.environ['PYTHONHASHSEED'] = '0'
 
 def main():
 
-    path = r'.\data\processed\deep_learning_data\19_ch_data/Depressed/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data/downsampled/Depressed/'
     X = []
     labels = []
     for i in os.listdir(path):
@@ -41,7 +41,7 @@ def main():
         X.append(data)
         labels.append(1)
 
-    path = r'.\data\processed\deep_learning_data\19_ch_data/Healthy/'
+    path = r'.\data\processed\deep_learning_data\19_ch_data/downsampled/Healthy/'
     for i in os.listdir(path):
         data = np.load(path+i)
         X.append(data)
@@ -57,7 +57,7 @@ def main():
     y = np.array(y)
 
     X = X[..., np.newaxis]
-
+    print(X.shape)
     X_train      = X[0:5700,]
     Y_train      = y[0:5700]
     X_val   = X[5700:6700,]
