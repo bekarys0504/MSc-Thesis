@@ -17,7 +17,7 @@ from sklearn.metrics import accuracy_score
 from tensorflow.keras import regularizers
 from wandb.keras import WandbCallback
 import pickle
-
+from scipy import stats
 
 wandb.init(project="DeepEEG", entity="bekarys")
 config = OmegaConf.load('./config/config.yaml')
@@ -54,14 +54,50 @@ def main():
 
     X, y = list(X), list(y)
     X = np.array(X)
+    print('Dataset1 max ', X.max())
+    print('Dataset1 min ', X.min())
+    print('Dataset1 mean ', X.mean())
+    X = stats.zscore(np.array(X), axis=None)
+    print('Dataset1 after max ', X.max())
+    print('Dataset1 after min ', X.min())
+    print('Dataset1 after mean ', X.mean())
+
     y = np.array(y)
 
     X = X[..., np.newaxis]
     print(X.shape)
-    X_train      = X[0:5700,]
-    Y_train      = y[0:5700]
-    X_val   = X[5700:6700,]
-    Y_val   = y[5700:6700]
+    
+    path = r'.\data\processed\deep_learning_data\1s_dataset2\resampled\Depressed/'
+    X_d2 = []
+    labels_d2 = []
+    for i in os.listdir(path):
+        data = np.load(path+i)
+        X_d2.append(data)
+        labels_d2.append(1)
+
+    path = r'.\data\processed\deep_learning_data\1s_dataset2\resampled\Healthy/'
+    for i in os.listdir(path):
+        data = np.load(path+i)
+        X_d2.append(data)
+        labels_d2.append(0)
+    
+    X_d2 = np.array(X_d2)
+    print('Dataset2 max ', X_d2.max())
+    print('Dataset2 min ', X_d2.min())
+    print('Dataset2 mean ', X_d2.mean())
+    X_d2 = stats.zscore(np.array(X_d2), axis=None)
+    print('Dataset2 after max ', X_d2.max())
+    print('Dataset2 after min ', X_d2.min())
+    print('Dataset2 after mean ', X_d2.mean())
+
+    X_d2 = X_d2[..., np.newaxis]
+    labels_d2 = np.array(labels_d2)
+    
+
+    X_train      = X[0:6700,]
+    Y_train      = y[0:6700]
+    X_val   = X_d2
+    Y_val   = labels_d2
     X_test   = X[6700:,]
     Y_test   = y[6700:]
 
@@ -190,45 +226,44 @@ def get_callback():
 
 
 def get_model(input_shape=(500,31,1), dropout_rate=0.25, output_bias=0):
-
+ 
     model=models.Sequential()
-    model.add(layers.Conv2D(3,(11,7), input_shape=input_shape, padding="same"))
+    model.add(layers.Conv2D(128,(11,3), input_shape=input_shape, padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.MaxPooling2D((2,2)))
+    model.add(layers.MaxPooling2D((4,4)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(5,(11,7), padding="same"))
+    model.add(layers.Conv2D(256,(11,3), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.MaxPooling2D((2,2)))
+    model.add(layers.MaxPooling2D((4,4)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(5,(11,7), padding="same"))
+    model.add(layers.Conv2D(128,(11,3), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2, 1)))
     model.add(layers.Dropout(rate=dropout_rate))
     
-    '''   
+    '''
     model.add(layers.Conv2D(10,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,1)))
-    model.add(layers.Dropout(rate=dropout_rate))
+    #model.add(layers.Dropout(rate=dropout_rate))
 
     model.add(layers.Conv2D(16,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((2,1)))
-    model.add(layers.Dropout(rate=dropout_rate))
-    '''
-    
-    model.add(layers.Flatten())
-    #model.add(layers.Dense(1024))
-    #model.add(LeakyReLU(alpha=0.1))
     #model.add(layers.Dropout(rate=dropout_rate))
-    model.add(layers.Dense(256))
+    '''
+    model.add(layers.Flatten())
+    model.add(layers.Dense(1024))
+    model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.Dropout(rate=dropout_rate))
+    model.add(layers.Dense(512))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.Dropout(rate=dropout_rate))
     model.add(layers.Dense(2, activation='softmax', bias_initializer=tf.keras.initializers.Constant(output_bias)))
