@@ -18,6 +18,7 @@ from tensorflow.keras import regularizers
 from wandb.keras import WandbCallback
 import pickle
 from scipy import stats
+from sklearn.preprocessing import MinMaxScaler
 
 wandb.init(project="DeepEEG", entity="bekarys")
 config = OmegaConf.load('./config/config.yaml')
@@ -57,7 +58,9 @@ def main():
     print('Dataset1 max ', X.max())
     print('Dataset1 min ', X.min())
     print('Dataset1 mean ', X.mean())
-    X = stats.zscore(np.array(X), axis=None)
+    scaler = MinMaxScaler()
+    X = scaler.fit_transform(X.reshape(-1, X.shape[-1])).reshape(X.shape)
+    #X = stats.zscore(np.array(X), axis=None)
     print('Dataset1 after max ', X.max())
     print('Dataset1 after min ', X.min())
     print('Dataset1 after mean ', X.mean())
@@ -85,7 +88,9 @@ def main():
     print('Dataset2 max ', X_d2.max())
     print('Dataset2 min ', X_d2.min())
     print('Dataset2 mean ', X_d2.mean())
-    X_d2 = stats.zscore(np.array(X_d2), axis=None)
+
+    X_d2 = scaler.transform(X_d2.reshape(-1, X_d2.shape[-1])).reshape(X_d2.shape)
+    #X_d2 = stats.zscore(np.array(X_d2), axis=None)
     print('Dataset2 after max ', X_d2.max())
     print('Dataset2 after min ', X_d2.min())
     print('Dataset2 after mean ', X_d2.mean())
@@ -98,6 +103,8 @@ def main():
     Y_train      = y[0:6700]
     X_val   = X_d2
     Y_val   = labels_d2
+    #X_val   = X[5700:6700,]
+    #Y_val   = y[5700:6700]
     X_test   = X[6700:,]
     Y_test   = y[6700:]
 
@@ -228,41 +235,40 @@ def get_callback():
 def get_model(input_shape=(500,31,1), dropout_rate=0.25, output_bias=0):
  
     model=models.Sequential()
-    model.add(layers.Conv2D(128,(11,3), input_shape=input_shape, padding="same"))
+    model.add(layers.Conv2D(3,(11,7), input_shape=input_shape, padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.MaxPooling2D((4,4)))
+    model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(256,(11,3), padding="same"))
+    model.add(layers.Conv2D(5,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
-    model.add(layers.MaxPooling2D((4,4)))
+    model.add(layers.MaxPooling2D((2,2)))
     model.add(layers.Dropout(rate=dropout_rate))
 
-    model.add(layers.Conv2D(128,(11,3), padding="same"))
-    model.add(LeakyReLU(alpha=0.1))
-    model.add(layers.BatchNormalization())
-    model.add(layers.MaxPooling2D((2, 1)))
-    model.add(layers.Dropout(rate=dropout_rate))
-    
-    '''
-    model.add(layers.Conv2D(10,(11,7), padding="same"))
+    model.add(layers.Conv2D(5,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.MaxPooling2D((2,1)))
-    #model.add(layers.Dropout(rate=dropout_rate))
+    model.add(layers.Dropout(rate=dropout_rate))
+    ''' 
+    model.add(layers.Conv2D(32,(11,7), padding="same"))
+    model.add(LeakyReLU(alpha=0.1))
+    model.add(layers.BatchNormalization())
+    model.add(layers.MaxPooling2D((2,1)))
+    model.add(layers.Dropout(rate=dropout_rate))
 
     model.add(layers.Conv2D(16,(11,7), padding="same"))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.BatchNormalization())
     model.add(layers.AveragePooling2D((2,1)))
-    #model.add(layers.Dropout(rate=dropout_rate))
+    model.add(layers.Dropout(rate=dropout_rate))
     '''
     model.add(layers.Flatten())
-    model.add(layers.Dense(1024))
-    model.add(LeakyReLU(alpha=0.1))
-    model.add(layers.Dropout(rate=dropout_rate))
+    #model.add(layers.Dense(1024))
+    #model.add(LeakyReLU(alpha=0.1))
+    #model.add(layers.Dropout(rate=dropout_rate))
     model.add(layers.Dense(512))
     model.add(LeakyReLU(alpha=0.1))
     model.add(layers.Dropout(rate=dropout_rate))

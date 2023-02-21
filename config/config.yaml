@@ -71,8 +71,8 @@ feature_percentages: ['all']
 n_folds: 10
 
 deep_learning_hp:
-  lr: 0.005
-  batch_size: 32
+  lr: 0.0005
+  batch_size: 4
   epochs: 200
   dropout_rate: 0.5
   chs: ['Fp1', 'Fp2', 'F7', 'F3', 'Fz', 'F4', 'F8', 'T3', 'C3', 'Cz', 'C4', 'T4', 'T5', 'P3', 'Pz', 'P4', 'T6', 'O1', 'O2']
